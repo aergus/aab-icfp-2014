@@ -39,7 +39,7 @@ addEnvironment vs n parent dum ((x:xs),intmap) = ((xs,insert x (Environment vs n
 
 
               
-type Instruction = Instr Int
+type Instruction = Instr Integer32
 
 getEnvironment :: EnvironmentChain -> Environment -> Int -> Environment
 getEnvironment envs e 0  = e
