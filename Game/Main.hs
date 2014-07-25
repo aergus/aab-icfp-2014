@@ -1,9 +1,9 @@
 {- game logic implementation -}
 
-module Main where
+module Game.Main where
 
-import Dummy
-import Types
+import Game.Dummy
+import Game.Types
 
 import Control.Monad
 import Control.Monad.ST
