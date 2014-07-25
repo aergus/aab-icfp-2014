@@ -39,7 +39,7 @@ addEnvironment vs n parent dum ((x:xs),intmap) = ((xs,insert x (Environment vs n
 
 
               
-type Instruction = Instr Integer32
+type Instruction = Instr Int
 
 getEnvironment :: EnvironmentChain -> Environment -> Int -> Environment
 getEnvironment envs e 0  = e
@@ -50,7 +50,9 @@ getEnvironment envs e n  = getEnvironment envs ((snd envs) ! (parent e)) (n-1)
 step :: Code -> State -> State
 step code state = let instr = code ! (currentinstr state) in
                    execute instr state
-                  
+
+
+                 
 incCP :: State -> State
 incCP state = state {currentinstr = (currentinstr state) + 1}
 
