@@ -117,7 +117,7 @@ execute RTN      state = case pop (ctrlstack state) of
                                                 _              -> error "tag mismatch"   
                           _                 -> error "tag mismatch"
 execute (DUM n)  state = incCP $ let (newenvs,index)=addEnvironment [] n (currentenv state) True (envchain state) in
-                            state {currentenv=index}
+                            state {currentenv=index,envchain = newenvs}
 execute (RAP n)  state = case pop (datastack state) of
                           (TAG_CLOSURE k env,rest) -> let cenv = (snd (envchain state)) ! (currentenv state) in
                                                       let (val,rest')=splitAt n rest in
