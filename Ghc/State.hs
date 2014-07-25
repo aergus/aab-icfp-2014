@@ -1,5 +1,6 @@
-module Ghc.State where
+module State where
 
+import Types
 import Data.Word
 import Data.Bits
 import Control.Monad
@@ -8,40 +9,12 @@ import Data.Array.ST
 import Data.STRef
 import Data.Array.MArray
 import Data.Array.Unboxed
-
-data Register = A | B | C | D | E | F | G | H | PC
-	deriving (Read, Show, Enum, Eq, Ord, Ix)
-
-data Argument = RegArg Register | IRegArg Register | Const Word8 | Memory Word8
-
-data Instruction = MOV {dest :: Argument, src :: Argument} 
-                 | INC {dest :: Argument}
-		 | DEC {dest :: Argument}
-		 | ADD {dest :: Argument, src :: Argument} 
-		 | SUB {dest :: Argument, src :: Argument} 
-		 | MUL {dest :: Argument, src :: Argument} 
-                 | DIV {dest :: Argument, src :: Argument} 
-		 | AND {dest :: Argument, src :: Argument} 
-		 | OR {dest :: Argument, src :: Argument} 
-		 | XOR {dest :: Argument, src :: Argument} 
-		 | JLT {targ :: Argument, x :: Argument, y :: Argument}
-		 | JEQ {targ :: Argument, x :: Argument, y :: Argument}
-		 | JGT {targ :: Argument, x :: Argument, y :: Argument}
-		 | INT {i :: Argument}
-		 | HLT
-
-data GhcState s = GS {
-	registers :: STUArray s Register Word8,
-	code :: Array Word8 Instruction,
-	mem :: STUArray s Word8 Word8,
-	counter :: STRef s Integer,
-	terminate :: STRef s Bool
-}
-
 loadInstruction :: GhcState s -> ST s ()
 loadInstruction state = do
 	pc <- readArray (registers state) PC
 	doInstruction state (code state ! pc)
+	newpc <- readArray (registers state) PC
+	when (newpc == pc) $ writeArray (registers state) PC (pc + 1)
 
 doInstruction :: GhcState s -> Instruction -> ST s ()
 doInstruction state ins = case ins of
@@ -51,7 +24,7 @@ doInstruction state ins = case ins of
 	ADD d s -> f2 (+) d s
 	SUB d s -> f2 (-) d s
 	MUL d s -> f2 (*) d s
-	DIV d s -> catch0 s $ f2 div d s -- TODO: Error 
+	DIV d s -> catch0 s $ f2 div d s
 	AND d s -> f2 (.&.) d s
 	OR d s -> f2 (.|.) d s
 	XOR d s -> f2 xor d s
