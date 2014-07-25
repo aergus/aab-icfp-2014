@@ -6,14 +6,14 @@ import Types
 
 import Text.ParserCombinators.Parsec
 
-gameMap :: GenParser Char st a -> GenParser Char st (GameMap a)
-gameMap fieldParser =
-    do result <- many (gameMapLine fieldParser)
+rawGameMap :: GenParser Char st (GameMap a)
+rawGameMap =
+    do result <- many rawGameMapLine
        return (GM result)
 
-gameMapLine :: GenParser Char st a -> GenParser Char st [a]
-gameMapLine fieldParser =
-    do result <- many fieldParser
+rawGameMapLine :: GenParser Char st [a]
+rawGameMapLine =
+    do result <- many element
        char '\n'
        return result
 
@@ -26,14 +26,11 @@ element =
                  '.'  -> Pill
                  'o'  -> PowerPill
                  '%'  -> Fruit undefined
-                 '\\' -> Player undefined
-                 '='  -> Monster undefined)
+                 '\\' -> LambdaMan undefined
+                 '='  -> Ghost undefined)
 
 elementChar :: GenParser Char st Char
 elementChar = oneOf " #.o%\\="
 
-parseGameMap :: GenParser Char () a -> String -> Either ParseError (GameMap a)
-parseGameMap fieldParser input = parse (gameMap fieldParser) "(unknown)" input
-
-parseLMMap :: String -> Either ParseError (GameMap Element)
-parseLMMap = parseGameMap element
+parseRawGameMap :: String -> Either ParseError GameMap
+parseRawGameMap input = parse rawGameMap "(unknown)" input

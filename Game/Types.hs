@@ -4,50 +4,72 @@ module Types where
 
 import Dummy
 
-newtype GameMap a = GM [[a]]
+import Data.Array.ST
+import Data.Ix
+import Data.STRef
 
-instance Show a => Show (GameMap a) where
+
+newtype GameMap = GM [[Element]]
+
+instance Show GameMap where
     show (GM tss) = foldr (\ ts -> ((showLikeString ts ++ "\n") ++)) "" tss
         where showLikeString = foldr (\ t -> ((show t) ++)) ""
 
 data Element =
-    Empty | Wall | Pill | PowerPill | Fruit Flavour |
-    Player LambdaMan | Monster Ghost
+    Empty | Wall | Pill | PowerPill | Fruit Fruit |
+    LambdaMan LambdaMan | Ghost Ghost
 
 instance Show Element where
-    show Empty       = " "
-    show Wall        = "#"
-    show Pill        = "."
-    show PowerPill   = "o"
-    show (Fruit _)   = "%"
-    show (Player _)  = "\\"
-    show (Monster _) = "="
+    show Empty         = " "
+    show Wall          = "#"
+    show Pill          = "."
+    show PowerPill     = "o"
+    show (Fruit _)     = "%"
+    show (LambdaMan _) = "\\"
+    show (Ghost _)     = "="
+
+data Fruit = Fr { fActive :: Bool, fFlavour :: Flavour }
 
 data Flavour =
     Cherry | Strawberry | Peach | Apple | Grapes | Galaxian | Bell | Key
 
-data Ghost = GH {
-    index     :: Integer,
-    ghostPos  :: (Integer, Integer),
-    normalTpm :: Integer,
-    afraidTpm :: Integer,
-    ghostCode :: GhostCode
-}
-
 data LambdaMan = LM {
-    points      :: Integer,
-    lambdaPos   :: (Integer, Integer),
-    lambdaTpm   :: Integer,
-    ghostsEaten :: Maybe Integer,
-    lambdaCode  :: LambdaManCode
+    lIndex       :: LambdaIndex,
+    lCode        :: LambdaManCode,
+    lTpm         :: Integer,
+    lInitNav     :: NavigationData,
+    lNav         :: NavigationData,
+    lNextMove    :: Integer,
+    lGhostsEaten :: Maybe Integer,
+    lLives       :: Integer,
+    lPoints      :: Integer
 }
 
-data Position        = Pos { x :: Integer, y :: Integer }
-
-data GameState a = GS {
-    ticks      :: Integer,
-    map        :: GameMap a,
-    players    :: [LambdaMan],
-    monsters   :: [Ghost],
-    frightMode :: Bool
+data Ghost = Gh {
+    gIndex     :: GhostIndex,
+    gCode      :: GhostCode,
+    gNormalTpm :: Integer,
+    gAfraidTpm :: Integer,
+    gInitNav   :: NavigationData,
+    gNav       :: NavigationData,
+    gNextMove  :: Integer,
+    gVisible   :: Bool
 }
+
+data LambdaIndex = LOne | LTwo deriving Enum
+
+data GhostIndex = GOne | GTwo | GThree | GFour deriving Enum
+
+data NavigationData = ND {
+    position  :: (Integer, Integer),
+    direction :: Integer
+}
+
+data GameState s = GS {
+    ticks      :: STRef s Integer,
+    gameMap    :: STUArray s (Int, Int) Element,
+    players    :: STUArray s LambdaIndex LambdaMan,
+    monsters   :: STUArray s GhostIndex Ghost,
+    frightMode :: STRef s (Maybe Integer),
+    pillCount  :: STRef s Integer
+ }
