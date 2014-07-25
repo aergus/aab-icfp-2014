@@ -27,19 +27,19 @@ data Flavour =
     Cherry | Strawberry | Peach | Apple | Grapes | Galaxian | Bell | Key
 
 data Ghost = GH {
-  index     :: Integer,
-  ghostPos  :: (Integer, Integer),
-  normalTpm :: Integer,
-  afraidTpm :: Integer,
-  ghostCode :: GhostCode
+    index     :: Integer,
+    ghostPos  :: (Integer, Integer),
+    normalTpm :: Integer,
+    afraidTpm :: Integer,
+    ghostCode :: GhostCode
 }
 
 data LambdaMan = LM {
-  points      :: Integer,
-  lambdaPos   :: (Integer, Integer),
-  lambdaTpm   :: Integer,
-  ghostsEaten :: Maybe Integer,
-  lambdaCode  :: LambdaManCode
+    points      :: Integer,
+    lambdaPos   :: (Integer, Integer),
+    lambdaTpm   :: Integer,
+    ghostsEaten :: Maybe Integer,
+    lambdaCode  :: LambdaManCode
 }
 
 data Position        = Pos { x :: Integer, y :: Integer }
