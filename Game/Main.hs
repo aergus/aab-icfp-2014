@@ -1,5 +1,8 @@
 {- game logic implementation -}
 
-module Game.Main where
+module Main where
 
-
+import Types
+import Control.Monad.ST
+import Data.STRef
+import Control.Monad
