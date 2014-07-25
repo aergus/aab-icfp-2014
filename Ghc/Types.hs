@@ -13,6 +13,7 @@ data Register = A | B | C | D | E | F | G | H | PC
 	deriving (Read, Show, Enum, Eq, Ord, Ix)
 
 data Argument = RegArg Register | IRegArg Register | Const Word8 | Memory Word8
+	deriving (Eq, Read, Show)
 
 data Instruction = MOV {dest :: Argument, src :: Argument} 
                  | INC {dest :: Argument}
@@ -29,6 +30,7 @@ data Instruction = MOV {dest :: Argument, src :: Argument}
 		 | JGT {targ :: Argument, x :: Argument, y :: Argument}
 		 | INT {i :: Argument}
 		 | HLT
+	deriving (Eq, Read, Show)
 
 data GhcState s = GS {
 	registers :: STUArray s Register Word8,
