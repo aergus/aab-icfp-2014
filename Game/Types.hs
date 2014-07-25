@@ -42,7 +42,8 @@ data Agent = Ag {
     initDir  :: Integer,
     curPos   :: (Integer, Integer),
     curDir   :: Integer,
-    tpm      :: Integer,
+    primTPM  :: Integer,
+    secTPM   :: Integer,
     nextMove :: Integer
 }
 
@@ -50,27 +51,29 @@ data LambdaMan = LM {
     lAgent       :: Agent,
     lIndex       :: LambdaIndex,
     lCode        :: LambdaManCode,
+    lPowerPill   :: Maybe Integer,
     lGhostsEaten :: Maybe Integer,
     lLives       :: Integer,
-    lPoints      :: Integer
+    lScode       :: Integer
 }
 
 data Ghost = Gh {
-    gAgent     :: Agent,
-    gIndex     :: GhostIndex,
-    gCode      :: GhostCode,
-    gVisible   :: Bool
+    gAgent      :: Agent,
+    gIndex      :: GhostIndex,
+    gCode       :: GhostCode,
+    gVisible    :: Bool,
+    gFrightened :: Bool
 }
 
-data LambdaIndex = LOne | LTwo deriving Enum
+data LambdaIndex = LOne | LTwo deriving (Eq, Ord, Ix)
 
-data GhostIndex = GOne | GTwo | GThree | GFour deriving Enum
+data GhostIndex = GOne | GTwo | GThree | GFour deriving (Eq, Ord, Ix)
 
 data GameState s = GS {
     ticks      :: STRef s Integer,
-    gameMap    :: STUArray s (Int, Int) Element,
-    lambdaMen  :: STUArray s LambdaIndex LambdaMan,
-    ghosts     :: STUArray s GhostIndex Ghost,
+    gameMap    :: STArray s (Int, Int) Element,
+    lambdaMen  :: STArray s LambdaIndex LambdaMan,
+    ghosts     :: STArray s GhostIndex Ghost,
     frightMode :: STRef s (Maybe Integer),
     pillCount  :: STRef s Integer
  }
