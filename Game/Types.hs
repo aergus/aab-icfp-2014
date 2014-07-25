@@ -28,31 +28,37 @@ instance Show Element where
     show (LambdaMan _) = "\\"
     show (Ghost _)     = "="
 
+isPowerPill :: Element -> Bool
+isPowerPill PowerPill = True
+isPowerPill _         = False
+
 data Fruit = Fr { fActive :: Bool, fFlavour :: Flavour }
 
 data Flavour =
     Cherry | Strawberry | Peach | Apple | Grapes | Galaxian | Bell | Key
 
+data Agent = Ag {
+    initPos  :: (Integer, Integer),
+    initDir  :: Integer,
+    curPos   :: (Integer, Integer),
+    curDir   :: Integer,
+    tpm      :: Integer,
+    nextMove :: Integer
+}
+
 data LambdaMan = LM {
+    lAgent       :: Agent,
     lIndex       :: LambdaIndex,
     lCode        :: LambdaManCode,
-    lTpm         :: Integer,
-    lInitNav     :: NavigationData,
-    lNav         :: NavigationData,
-    lNextMove    :: Integer,
     lGhostsEaten :: Maybe Integer,
     lLives       :: Integer,
     lPoints      :: Integer
 }
 
 data Ghost = Gh {
+    gAgent     :: Agent,
     gIndex     :: GhostIndex,
     gCode      :: GhostCode,
-    gNormalTpm :: Integer,
-    gAfraidTpm :: Integer,
-    gInitNav   :: NavigationData,
-    gNav       :: NavigationData,
-    gNextMove  :: Integer,
     gVisible   :: Bool
 }
 
@@ -60,16 +66,11 @@ data LambdaIndex = LOne | LTwo deriving Enum
 
 data GhostIndex = GOne | GTwo | GThree | GFour deriving Enum
 
-data NavigationData = ND {
-    position  :: (Integer, Integer),
-    direction :: Integer
-}
-
 data GameState s = GS {
     ticks      :: STRef s Integer,
     gameMap    :: STUArray s (Int, Int) Element,
-    players    :: STUArray s LambdaIndex LambdaMan,
-    monsters   :: STUArray s GhostIndex Ghost,
+    lambdaMen  :: STUArray s LambdaIndex LambdaMan,
+    ghosts     :: STUArray s GhostIndex Ghost,
     frightMode :: STRef s (Maybe Integer),
     pillCount  :: STRef s Integer
  }
