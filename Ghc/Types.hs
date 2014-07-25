@@ -1,4 +1,4 @@
-module Types where
+module Ghc.Types where
 
 import Data.Word
 import Data.Bits

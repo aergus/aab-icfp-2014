@@ -1,6 +1,6 @@
-module State where
+module Game.State where
 
-import Types
+import Game.Types
 import Data.Word
 import Data.Bits
 import Control.Monad
@@ -9,12 +9,16 @@ import Data.Array.ST
 import Data.STRef
 import Data.Array.MArray
 import Data.Array.Unboxed
+import Game.Types
+
 loadInstruction :: GhcState s -> ST s ()
 loadInstruction state = do
 	pc <- readArray (registers state) PC
 	doInstruction state (code state ! pc)
 	newpc <- readArray (registers state) PC
 	when (newpc == pc) $ writeArray (registers state) PC (pc + 1)
+
+interupt = undefined
 
 doInstruction :: GhcState s -> Instruction -> ST s ()
 doInstruction state ins = case ins of
@@ -31,7 +35,7 @@ doInstruction state ins = case ins of
 	JLT targ x y -> f3 (<) targ x y
 	JEQ targ x y -> f3 (==) targ x y
 	JGT targ x y -> f3 (>) targ x y
-	INT i -> undefined -- TODO
+	INT i -> interupt i
 	HLT -> writeSTRef (terminate state) True
 	where f1 f d = modifyArgument state d f
 	      f2 f d s = do
