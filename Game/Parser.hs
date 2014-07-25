@@ -2,7 +2,7 @@
 
 module Parser where
 
-import Types
+import Game.Types
 
 import Text.ParserCombinators.Parsec
 
