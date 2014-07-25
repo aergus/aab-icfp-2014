@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveFunctor #-}
+
 module GCC.Types where
 
 data Instr a =     LDC a      --LDC loads int constant 
@@ -20,5 +22,5 @@ data Instr a =     LDC a      --LDC loads int constant
                  | RTN          --pop stack pointer, ret adress, env, restore stack and env, jump to ret adress.
                  | DUM a      --creates empty env frame child with specified size, sets it as current.
                  | RAP a      --RAP n: pop closure cell. Fill empty frame (pointed to by closure?) with n arguments from the stack. Push stack, parent of current environment, and return address. Set environment frame pointer to frame pointer from closure cell. Jump to code(closure).
-                 | STOP deriving Show
+                 | STOP deriving (Show, Functor)
                 --- TAIL CALL EXT:
