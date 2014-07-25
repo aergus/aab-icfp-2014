@@ -1,16 +1,17 @@
-
+module GCC where
+import Data.IntMap
 
  --TAG_INT, TAG_CONS, TAG_JOIN, TAG_CLOSURE
-data DataValue    = TAG_INT Int | TAG_CONS Value Value | TAG_JOIN Int | TAG_CLOSURE Int Int
+data DataValue    = TAG_INT Int | TAG_CONS DataValue DataValue | TAG_CLOSURE Int Int
 data ControlValue = TAG_JOIN Int| TAG_RET Int| TAG_FRAME Int| TAG_STOP
      
 type DataStack        = [DataValue]
 type ControlStack     = [ControlValue]
 type EnvironmentChain = ([Int],IntMap Environment)
-data Environment      = {values :: [DataValue]
-                           size :: Int
-                          dummy :: Bool
-                         parent :: Key}
+data Environment      = Environment {values :: [DataValue],
+                                      esize :: Int,
+                                      dummy :: Bool,
+                                     parent :: Key}
 type Code             = IntMap Instruction
 data State = State {datastack    :: DataStack,
                     ctrlstack    :: ControlStack,
@@ -30,10 +31,9 @@ pop2 _        = error "stack empty"
 newEnvironmentChain :: EnvironmentChain
 newEnvironmentChain = ([1..],fromList [(0,Environment [] 0 False (error "root has no parent"))])
 
-addEnvironment :: [DataValue] -> Int -> Key -> EnvironmentChain -> (EnvironmentChain,Int)
-addEnvironment vs n parent ((x:xs),intmap) = ((xs,insert x (Environment vs n False parent) intmap),x)
+addEnvironment :: [DataValue] -> Int -> Key -> Bool -> EnvironmentChain -> (EnvironmentChain,Int)
+addEnvironment vs n parent dum ((x:xs),intmap) = ((xs,insert x (Environment vs n dum parent) intmap),x)
 
-updateEnvironment
 
 data Instruction = LDC Int      --LDC loads int constant
                  | LD Int Int   --LD n i loads i'th value in n'th frame
@@ -48,7 +48,7 @@ data Instruction = LDC Int      --LDC loads int constant
                  | CONS         --builds cons cell of top two elements of stack, pushes it
                  | CAR          --extracts first element of cons cell
                  | CDR          --extracts second element of cons cell
-                 | SEL          --sel $t $f pops first elt of stack, if nonzero, go to $t, else to $f. push return adress on stack.
+                 | SEL Int Int  --sel $t $f pops first elt of stack, if nonzero, go to $t, else to $f. push return adress on stack.
                  | JOIN         --pops first elt, if its an return adress, jump to it.
                  | LDF Int      --give literal function address, build closure pointing to that function & with current environment frame
                  | AP Int       --AP n: pop closure; allocate new environment (child of the current one), fill it with n arguments from the stack. Push stack pointer, environment pointer, return address, then jump into function specified in closure and set env to new frame.
@@ -61,8 +61,8 @@ data Instruction = LDC Int      --LDC loads int constant
 
 
 getEnvironment :: EnvironmentChain -> Environment -> Int -> Environment
-getEnvironment envs e 0 _ = e
-getEnvironment envs e n  = getEnvironment ((snd envs) ! (parent e)) (n-1) chain
+getEnvironment envs e 0  = e
+getEnvironment envs e n  = getEnvironment envs ((snd envs) ! (parent e)) (n-1) 
 
 
 
@@ -76,7 +76,7 @@ incCP state = state {currentinstr = (currentinstr state) + 1}
 execute :: Instruction -> State -> State
 execute (LDC n)  state = incCP $ state {datastack=(TAG_INT n):(datastack state)}
 execute (LD n i) state = incCP $ let (envs,stack) = (envchain state, datastack state) in
-                                 let e = getEnvironment envs (envs ! (currentenv state)) n in
+                                 let e = getEnvironment envs ((snd envs) ! (currentenv state)) n in
                                                state {datastack = ((values e) !! i):stack}
 execute ADD      state = incCP $ case pop2 (datastack state) of
                                   (TAG_INT y, TAG_INT x, rest) -> state {datastack = (TAG_INT (x+y)):rest}
@@ -104,14 +104,14 @@ execute ATOM     state = incCP $ case pop (datastack state) of
                                   (TAG_INT _, rest) -> state {datastack = (TAG_INT 1):rest}
                                   (_,rest)          -> state {datastack = (TAG_INT 0):rest}
 execute CONS     state = incCP $ let (y,x,rest) = pop2 (datastack state) in
-                                  state {datastack = (TAG_CONS x y):rest
+                                  state {datastack = (TAG_CONS x y):rest}
 execute CAR      state = incCP $ case pop (datastack state) of
                                   (TAG_CONS x y, rest) -> state {datastack = x:rest}
                                   _                    -> error "tag mismatch"
 execute CDR      state = incCP $ case pop (datastack state) of
                                   (TAG_CONS x y, rest) -> state {datastack = y:rest}
                                   _                    -> error "tag mismatch"
-execute (SEL n k) state = let newctrlstack = (TAG_JOIN ((currentinstr state)+1)):(ctrlstack state)
+execute (SEL n k) state = let newctrlstack = (TAG_JOIN ((currentinstr state)+1)):(ctrlstack state) in
                           case pop (datastack state) of
                            (TAG_INT 0, rest) -> state {datastack=rest, currentinstr=k, ctrlstack=newctrlstack}
                            (TAG_INT _, rest) -> state {datastack=rest, currentinstr=n, ctrlstack=newctrlstack}
@@ -123,11 +123,11 @@ execute (AP n)   state = case pop (datastack state) of
                           (TAG_CLOSURE k env, rest)   -> let (val, rest') = splitAt n rest in
                                                          let (newenvs, index)= addEnvironment (reverse val) n env False (envchain state) in
                                                          state {currentenv=index, 
-                                                          environmentchain=newenvs,
-                                                                 datastack=rest'
-                                                              currentinstr=k
-                                                              controlstack=(TAG_RET ((currentinstr state)+1)) 
-                                                                            :(TAG_FRAME (currentenv state)):(controlstack state)
+                                                                  envchain=newenvs,
+                                                                 datastack=rest',
+                                                              currentinstr=k,
+                                                                 ctrlstack=(TAG_RET ((currentinstr state)+1)) 
+                                                                            :(TAG_FRAME (currentenv state)):(ctrlstack state)}
                           _                           -> error "tag mismatch" 
 execute RTN      state = case pop (ctrlstack state) of
                           (TAG_STOP,rest)   -> state {ctrlstack = rest, stop = True}
@@ -138,16 +138,14 @@ execute RTN      state = case pop (ctrlstack state) of
 execute (DUM n)  state = incCP $ let (newenvs,index)=addEnvironment [] n (currentenv state) True (envchain state) in
                             state {currentenv=index}
 execute (RAP n)  state = case pop (datastack state) of
-                          (TAG_CLOSURE k env,rest) -> let cenv = (envchain state) ! (currentenv state) in
+                          (TAG_CLOSURE k env,rest) -> let cenv = (snd (envchain state)) ! (currentenv state) in
                                                       let (val,rest')=splitAt n rest in
-                                                      case(islengthn,isdummy) = (size cenv == n, dummy cenv) of
-                                                       (True,True)-> state
-           {-THIS MIGHT BE WRONG-}                      {envchain=(adjust (\e -> e{values=reverse val}) (currentenv state)).(adjust (\e->e{dummy=False}) env)$(envchain state),
-   
+                                                      case(esize cenv == n, dummy cenv, currentenv state == env) of
+                                                       (True,True,True)-> state
+                                                        {envchain=(fst(envchain state),adjust (\e -> e{values=reverse val, dummy=False}) env (snd(envchain state))),
                                                         ctrlstack=(TAG_RET ((currentinstr state)+1))
-                                                                  :(TAG_FRAME (parent cenv)):(ctrlstack state)
-                                                     currentinstr=k
-                                                       currentenv=env}
+                                                                  :(TAG_FRAME (parent cenv)):(ctrlstack state),
+                                                     currentinstr=k}
                                                        _          -> error "frame mismatch"  
                           _                        -> error "tag mismatch"
 execute STOP     state = state{stop=True}                                                     
