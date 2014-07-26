@@ -1,11 +1,11 @@
 dfs:
 (\r dfs gameMap target dfsState
-    IF (NIL (CAR dfsState))
+    (IF (NIL (CAR dfsState))
        (dfsState)
        (IF (__and (== (CAR target) (CAR (CAR (CAR dfsState))))
                   (== (CDR target) (CDR (CAR (CAR dfsState)))))
            (dfsState)
-           (dfs gameMap target (updateState (CAR (CAR dfsState)) (dfsState)))))
+           (dfs gameMap target (updateState (CAR (CAR dfsState)) (dfsState))))))
 
 updateState:
 (\ gameMap cell state
