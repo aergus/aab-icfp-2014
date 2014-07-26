@@ -5,6 +5,12 @@ import Ghc.Types
 import Text.Parsec.Token
 import Text.ParserCombinators.Parsec
 import Control.Monad
+import Data.Word
+import qualified Data.Map as M
+
+type EArg = Arg (Either String Word8)
+type EInstr = Instr EArg
+data ELine = Line {def :: [(String, Word8)], lbls :: [String], instr :: EInstr}
 
 reg = zip (map (:[]) ['a'..'h']++["pc"]) [A .. PC]
 
@@ -24,40 +30,76 @@ threearity= [("JLT", JLT, [argument, argument, argument]),
              ("JEQ", JEQ, [argument, argument, argument]),
              ("JGT", JGT, [argument, argument, argument])]
 
-ghcParser :: GenParser Char s [Instruction]
+ghcParser :: GenParser Char s [ELine]
 ghcParser = do
 	whiteSpace lexer
-	ins <- many (lexeme lexer ghcInstruction)
+	ins <- many (lexeme lexer ghcLine)
 	eof
 	return ins
 
-argument :: GenParser Char s Argument
+argument :: GenParser Char s EArg
 argument = do
    ghcReg
    <|> ghcIReg
    <|> ghcCon
    <|> ghcMem
 
-noConst :: GenParser Char s Argument
+noConst :: GenParser Char s EArg
 noConst = do
 	 p <- argument
          case p of
 		  Const _ -> fail "no const allowed"
 		  _ -> return p
 
-noPC :: GenParser Char s Argument
+noPC :: GenParser Char s EArg
 noPC = do
      p <- noConst
      when (p == RegArg PC)$ fail "no pc allowed"
      return p
 
+ghcReg :: GenParser Char s EArg
 ghcReg = choice $ map (\ (x,y) -> reserved lexer x >> return (RegArg y)) reg
+ghcIReg :: GenParser Char s EArg
 ghcIReg = brackets lexer $choice $ map (\ (x,y) -> reserved lexer x >> return (IRegArg y)) reg
 
-ghcCon = fmap (Const . fromInteger) $ decimal lexer
-ghcMem = brackets lexer $ fmap (Memory . fromInteger) $ decimal lexer
+ghcEither :: GenParser Char s (Either String Word8)
+ghcEither = ghcWord <|> ghcIdent
 
-ghcInstruction :: GenParser Char s Instruction
+ghcWord :: GenParser Char s (Either String Word8)
+ghcWord = do
+  x <- decimal lexer
+  return $ Right $ fromInteger x
+
+ghcIdent :: GenParser Char s (Either String Word8)
+ghcIdent = do
+  x <- identifier lexer
+  return $ Left x
+
+ghcCon :: GenParser Char s EArg
+ghcCon = fmap (Const ) $ ghcEither
+ghcMem :: GenParser Char s EArg
+ghcMem = brackets lexer $ fmap (Memory) $ ghcEither 
+
+ghcLine :: GenParser Char s ELine
+ghcLine = do
+  defs <- many ghcDef
+  lbls <- many $ try ghcLabel
+  instr <- ghcInstruction
+  return $Line defs lbls instr
+
+ghcDef :: GenParser Char s (String, Word8) 
+ghcDef = do
+	reserved lexer "DEF"
+	id <- identifier lexer
+	num <- decimal lexer
+	return (id, fromInteger num)
+
+ghcLabel :: GenParser Char s String
+ghcLabel = do ident <- identifier lexer
+              colon lexer
+	      return ident
+
+ghcInstruction :: GenParser Char s EInstr
 ghcInstruction = do
 	ghcZeroarity
 	<|> ghcOnearity
@@ -93,6 +135,7 @@ ghcLanguage = LanguageDef { commentStart="",
 		opStart=letter,
 		opLetter=letter,
 		reservedNames=map fst reg ++ [
+		        "DEF",
 			"MOV",
 			"INC",
 			"DEC",
@@ -111,5 +154,14 @@ ghcLanguage = LanguageDef { commentStart="",
 		reservedOpNames=[]
 }
 
-parseGhc :: String -> Either (ParseError) [Instruction]
+parseGhc :: String -> Either (ParseError) [ELine]
 parseGhc = parse ghcParser "unknown"
+
+resolveIdentifier :: [ELine] -> [Instruction]
+resolveIdentifier el = let m = M.fromList $ concat $ zipWith (\a b -> zip a (repeat b)) (map lbls el) [0..] ++ map (def) el
+		           f (Right x) = x
+		           f (Left y)  = m M.! y
+                       in map ( fmap (fmap f). instr) el
+
+pipeline :: String -> [Instruction]
+pipeline = (\(Right x) -> resolveIdentifier x) . parseGhc

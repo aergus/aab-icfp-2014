@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveFunctor #-}
+
 module Ghc.Types where
 
 import Data.Word
@@ -12,25 +14,29 @@ import Data.Array.Unboxed
 data Register = A | B | C | D | E | F | G | H | PC
 	deriving (Read, Show, Enum, Eq, Ord, Ix)
 
-data Argument = RegArg Register | IRegArg Register | Const Word8 | Memory Word8
-	deriving (Eq, Read, Show)
+data Arg a = RegArg Register | IRegArg Register | Const a | Memory a
+	deriving (Eq, Read, Show, Functor)
 
-data Instruction = MOV {dest :: Argument, src :: Argument} 
-                 | INC {dest :: Argument}
-		 | DEC {dest :: Argument}
-		 | ADD {dest :: Argument, src :: Argument} 
-		 | SUB {dest :: Argument, src :: Argument} 
-		 | MUL {dest :: Argument, src :: Argument} 
-                 | DIV {dest :: Argument, src :: Argument} 
-		 | AND {dest :: Argument, src :: Argument} 
-		 | OR {dest :: Argument, src :: Argument} 
-		 | XOR {dest :: Argument, src :: Argument} 
-		 | JLT {targ :: Argument, x :: Argument, y :: Argument}
-		 | JEQ {targ :: Argument, x :: Argument, y :: Argument}
-		 | JGT {targ :: Argument, x :: Argument, y :: Argument}
-		 | INT {i :: Argument}
+type Argument = Arg Word8
+
+data Instr a = MOV {dest :: a, src :: a} 
+                 | INC {dest :: a}
+		 | DEC {dest :: a}
+		 | ADD {dest :: a, src :: a} 
+		 | SUB {dest :: a, src :: a} 
+		 | MUL {dest :: a, src :: a} 
+                 | DIV {dest :: a, src :: a} 
+		 | AND {dest :: a, src :: a} 
+		 | OR {dest :: a, src :: a} 
+		 | XOR {dest :: a, src :: a} 
+		 | JLT {targ :: a, x :: a, y :: a}
+		 | JEQ {targ :: a, x :: a, y :: a}
+		 | JGT {targ :: a, x :: a, y :: a}
+		 | INT {i :: a}
 		 | HLT
-	deriving (Eq, Read, Show)
+	deriving (Eq, Read, Show, Functor)
+
+type Instruction = Instr Argument
 
 data GhcState s = GS {
 	registers :: STUArray s Register Word8,
