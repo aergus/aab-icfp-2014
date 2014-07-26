@@ -22,6 +22,7 @@ data Expression = App Expression [Expression]
             | If  Expression Expression Expression
             | Car Expression
             | Cdr Expression
+            | Nil Expression
             | List [Expression]
             | LamFApp String [String] Expression [Expression]  --only for compilation
 
@@ -43,6 +44,7 @@ freeVariables (Eq e1 e2) = (freeVariables e1) `union` (freeVariables e2)
 freeVariables (If e1 e2 e3) = (freeVariables e1) `union` (freeVariables e2) `union` (freeVariables e3)
 freeVariables (Car e) = freeVariables e
 freeVariables (Cdr e) = freeVariables e
+freeVariables (Nil e) = freeVariables e
 freeVariables (List exps) = foldr union [] (map freeVariables exps)
 freeVariables (App e exps) = foldr union (freeVariables e) (map freeVariables exps)
  
@@ -53,6 +55,7 @@ prepare1 (LamF f args exp) = case f `elem` (freeVariables exp) of
                                         False-> Lam args exp
 prepare1 (Car e)           = Car (prepare1 e)
 prepare1 (Cdr e)           = Cdr (prepare1 e)
+prepare1 (Nil e)           = Nil (prepare1 e)
 prepare1 (Add e1 e2)       = Add (prepare1 e1) (prepare1 e2)
 prepare1 (Sub e1 e2)       = Sub (prepare1 e1) (prepare1 e2)
 prepare1 (Mul e1 e2)       = Mul (prepare1 e1) (prepare1 e2)
@@ -74,6 +77,7 @@ prepare2 :: Expression -> Expression --turn App (LamF f args exp) exps into LamF
 prepare2 (App (LamF f args exp) exps) = LamFApp f args (prepare2 exp) (map prepare2 exps)
 prepare2 (Car e)           = Car (prepare2 e)
 prepare2 (Cdr e)           = Cdr (prepare2 e)
+prepare2 (Nil e)           = Nil (prepare2 e)
 prepare2 (Add e1 e2)       = Add (prepare2 e1) (prepare2 e2)
 prepare2 (Sub e1 e2)       = Sub (prepare2 e1) (prepare2 e2)
 prepare2 (Mul e1 e2)       = Mul (prepare2 e1) (prepare2 e2)
@@ -96,6 +100,7 @@ prepare3 freenames (LamF f args exp)  = let (newvars,rest) = splitAt (length arg
                                          (Lam newvars (LamFApp f args (prepare3 (rest \\ args) exp) (map Name newvars))) 
 prepare3 freenames (Car e)           = Car (prepare3 freenames e)
 prepare3 freenames (Cdr e)           = Cdr (prepare3 freenames e)
+prepare3 freenames (Nil e)           = Nil (prepare3 freenames e)
 prepare3 freenames (Add e1 e2)       = Add (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2)
 prepare3 freenames (Sub e1 e2)       = Sub (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2)
 prepare3 freenames (Mul e1 e2)       = Mul (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2)
@@ -175,6 +180,7 @@ tr ls ctxt (Eq e1 e2)    = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e
 tr ls ctxt (Cons e1 e2)  = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [CONS])
 tr ls ctxt (Car e)       = (tr ls ctxt e) <+> (toCode [CAR])
 tr ls ctxt (Cdr e)       = (tr ls ctxt e) <+> (toCode [CAR])
+tr ls ctxt (Nil e)       = (tr ls ctxt e) <+> (toCode [ATOM])
 tr ls ctxt (App ef exps) = foldr (<+>) ((tr (split 0 ls) ctxt ef) <+> toCode [AP (length exps)]) 
                                       (zipWith (\e i->tr (split i ls) ctxt e) exps [1..])
 tr (lt:lf:ls) ctxt (If e et ef) = (tr (split 0 ls) ctxt e) 
