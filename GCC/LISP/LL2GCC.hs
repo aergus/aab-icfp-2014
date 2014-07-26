@@ -18,3 +18,12 @@ ll2gcc = do args <- getArgs
                 (\x -> putStrLn $ "ERROR: " ++ show x)
                 (\x -> putStr $ showLn $ compile x)
                 (parseLisp lispCode)
+
+
+ll2gccL :: IO ()
+ll2gccL = do args <- getArgs
+             lispCode <- readFile (args !! 0)
+             either                
+                (\x -> putStrLn $ "ERROR: " ++ show x)
+                (\x -> putStr $ printCodeWithLabels $ compileWithLabels x)
+                (parseLisp lispCode)

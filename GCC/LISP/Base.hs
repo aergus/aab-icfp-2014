@@ -10,16 +10,26 @@ type LISP = (Expression,[(String, Expression)])
 
 
 
-
+precompile :: LISP -> LabelLCode
+precompile (main,defs) = transform $ (prepare main, [(s,prepare exp) | (s,exp) <- defs])
 
 compile :: LISP -> [LInstr Int]
-compile (main,defs) = resolveLabels . transform $ (prepare main, [(s,prepare exp) | (s,exp) <- defs])
+compile = resolveLabels . precompile
+
+printCode :: [LInstr Int] -> String
+printCode = concat . (map (++"\n")) . (map show)
+
+printCodeWithLabels :: [(String,[LInstr String])] -> String
+printCodeWithLabels = concat . (map (\(label,instrs) -> (label ++ ":\n") ++ (concat.(map (' ':)).(map (++"\n")).(map show) $ instrs)))
+
+compileWithLabels :: LISP -> [(String,[LInstr String])]
+compileWithLabels = M.toAscList . precompile
 
 transform :: LISP -> LabelLCode
 transform (main,defs) = let l = length defs in
                         let (labels, rest) = splitAt (l+1) rootlabels in
                         let ctxt =( (M.fromList [(name,(1,i,True)) | ((name,_),i) <- zip defs [0..]]) `M.union` (fst firstcontext), 1) in
-                         (foldr (<+>) (toCode $ [DUM l]++[LDF s | s <- labels]++[RAP l])
+                         (foldr (<+>) (toCode $ [DUM l]++[LDF s | s <- labels]++[RAP l,RTN])
                           [floatAt s $ (tr (split i rest) ctxt exp)<+>(toCode [RTN])| (s,exp,i) <- zip3 labels ((map snd defs)++[main]) [1..]])
                           
 
@@ -186,7 +196,7 @@ floatAt l = M.mapKeys (\x -> if x == "" then l else x)
 type Context = (M.Map String (Int,Int,Bool),Int) --how deep is each variable, IS it coded as a zero-argument function or , and how deep are we?
 
 firstcontext :: Context
-firstcontext = (M.fromList [("worldstate",(0,0,False)),("ghostcode",(0,1,False))],0) --the two arguments of main
+firstcontext = (M.fromList [("WORLDSTATE0",(0,0,False)),("GHOSTCODE",(0,1,False))],0) --the two arguments of main
 
 tr :: [Label] -> Context -> Expression -> LabelLCode
 tr ls ctxt (Add e1 e2)   = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [ADD])
