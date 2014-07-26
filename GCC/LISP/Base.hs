@@ -194,7 +194,7 @@ tr (l1:l2:ls) (ctxtm,lvl) (LamFApp f vars exp exps) =
                    let l=length vars in
                    let newcontext = ((M.fromList (zipWith (\var i -> (var, (lvl+2,i))) vars [0..]) `M.union` (M.fromList[(f, (lvl+1,0))]) `M.union` ctxtm, lvl+2)) in
                     case length exps == l of
-                     True -> (toCode [DUM 1, LDF l1, LDF l2, RAP 1, RTN]
+                     True -> (toCode [DUM 1, LDF l1, LDF l2, RAP 1]
                               <+> (floatAt l1 ((tr (split 0 ls) newcontext exp)<+>(toCode [RTN])))
                               <+> (floatAt l2 ((foldr1 (<+>) (zipWith (\e i->tr (split i ls) (ctxtm,lvl+1) e) exps [1..]))<+>(toCode [LD 0 0, AP l, RTN]))))
                      False -> error "wrong number of arguments in LamFApp"
