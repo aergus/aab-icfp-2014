@@ -1,24 +1,42 @@
-accList:
-(\r accList x l -> (IF (== l 0) (CAR x) (accList (CRD x) (- l 1))))
+; accList :: [a] -> Int -> a
+_accList =
+(\r accList x l -> (IF (== l 0) (CAR x) (accList (CDR x) (- l 1))))
 
-lastTuple:
-(\r lastTuple x l -> (IF (< l 2) (CRD x) (lastTuple (CRD x) (- l 1))))
+; _lastTuple :: ?
+_lastTuple =
+(\r lastTuple x l -> (IF (< l 2) (CDR x) (lastTuple (CDR x) (- l 1))))
 
-foldr:
-(\r foldr f base xs ->
-    (IF (NIL xs) base (f (CAR x) (foldr f base (CRD x)))))
+; _foldr :: (a -> b -> b) -> b -> [a] -> b
+_foldr =
+(\ f base xs ->
+    (IF (NIL xs) base (f (CAR xs) (_foldr f base (CDR xs)))))
 
-map:
-(\r map f xs -> (IF (NIL xs) 0 (: (f (CAR x)) (map f (CRD xs)))))
+; _map :: (a -> b) [a] -> [b]
+_map =
+(\ f xs -> (IF (NIL xs) 0 (: (f (CAR xs)) (_map f (CDR xs)))))
 
-elem:
-(\ x xs (_foldr (\ y v -> (or (== x y) v)) 0 xs))
+; _filter :: (a -> Int) -> [a] -> [a]
+_filter =
+(\ p l -> (IF (NIL l) 0 (IF (p (CAR l))
+                            (: (CAR l) (_filter p (CDR l)))
+                            (_filter p (CDR l)))))
 
-and:
+; _elem :: Eq a => a -> [a] -> Int
+_elem =
+(\ x xs -> (_foldr (\ y v -> (_or (== x y) v)) 0 xs))
+
+; _mod :: Int -> Int -> Int
+_mod =
+(\ n m -> (- n (* m (/ n m))))
+
+; _and :: Int -> Int -> Int
+_and =
 (\ a b -> (IF (== a 1) (IF (== b 1) 1 0) 1))
 
-or:
+; _or :: Int -> Int -> Int
+_or =
 (\ a b -> (IF (== a 0) (IF (== b 0) 0 1) 1))
 
-not:
+; _not :: Int -> Int
+_not =
 (\ a -> (IF (== a 0) 1 0))

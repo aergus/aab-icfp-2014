@@ -60,7 +60,7 @@ lispParser = do
 lispDefinition :: GenParser Char s (String, Expression)
 lispDefinition = do
 	ident <- identifier lexer
-	colon lexer
+	symbol lexer "="
 	e <- lispExpression
 	return (ident, e)
 
@@ -129,8 +129,8 @@ lispLanguage = LanguageDef { commentStart="",
 		commentLine=";",
 		nestedComments=False,
 		caseSensitive=False,
-		identStart=letter,
-		identLetter=letter,
+		identStart=oneOf "_" <|> letter,
+		identLetter=oneOf "_" <|> letter,
 		opStart=oneOf ":+-*/<=>\\[-",
 		opLetter=oneOf "=r]>",
 		reservedNames=map fst onearity ++ map fst threearity,
