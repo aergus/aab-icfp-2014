@@ -23,7 +23,7 @@ runGHC = undefined
 lambdaLoop :: GameState s -> ST s (LambdaMan, Integer, Integer)
 lambdaLoop gs =
   do gs' <- lambdaTick gs
-     pills <- readSTRef (pillCount gs)
+     pills <- readSTRef (pillCount gs')
      m <- readArray (lambdaMen gs') LOne
      man <- readSTRef m
      utc <- readSTRef (ticks gs')
@@ -31,7 +31,7 @@ lambdaLoop gs =
              lLives man == 0 ||
              utc > 127 * (fst $ mapDims gs') * (snd $ mapDims gs') * 16)
      then return (man, utc, pills)
-     else lambdaLoop gs'
+     else do { modifySTRef (ticks gs') (+1); lambdaLoop gs' }
 
 lambdaTick :: GameState s -> ST s (GameState s)
 lambdaTick gs =
@@ -49,7 +49,6 @@ lambdaTick gs =
                                                else return Nothing
                                         return dir) (ghosts gs)
 
-       -- TODO: set agent directions
        -- HACK for going through all array members
        dummy <- mapArray (\ l -> do m <- readSTRef l
                                     dir'' <- readArray lambdaDirs (lIndex m)
@@ -90,6 +89,8 @@ lambdaTick gs =
        when (utc == 127 * 280 || utc == 127 * 480)
            (writeSTRef (fruitState gs) False)
 
+       fruitOn <- readSTRef (fruitState gs)
+
        dummy <- mapArray (\ l -> do m <- readSTRef l
                                     el <- readArray gm (lPos m)
                                     when (isPill el)
@@ -104,7 +105,7 @@ lambdaTick gs =
                                             -- TODO: fright mode duration
                                             writeSTRef (frightMode gs)
                                                 (Just 1000))
-                                    when (isFruit el)
+                                    when (isFruit el && fruitOn)
                                         (do modifySTRef l
                                                 (eatPoints (fruitPoints $
                                                      level gs)))
@@ -127,6 +128,22 @@ lambdaTick gs =
                                                                (reset False)))
                                         (ghosts gs)
                                     return ()) (lambdaMen gs)
+
+       dummy <- mapArray (\ l -> do m <- readSTRef l
+                                    dir'' <- readArray lambdaDirs (lIndex m)
+                                    dir' <- dir''
+                                    when (isJust dir')
+                                       (do modifySTRef l (lUpdateNav $
+                                               fromJust dir')))
+           (lambdaMen gs)
+
+       dummy <- mapArray (\ g -> do m <- readSTRef g
+                                    dir'' <- readArray ghostDirs (gIndex m)
+                                    dir' <- dir''
+                                    when (isJust dir')
+                                       (do modifySTRef g (gUpdateNav $
+                                               fromJust dir')))
+           (ghosts gs)
 
        return gs
     where gm = gameMap gs
@@ -186,3 +203,14 @@ reset v ghost = ghost { gAgent = backToStart (gAgent ghost), gVisible = v }
 
 backToStart :: Agent -> Agent
 backToStart agent = agent { curPos = initPos agent, curDir = initDir agent }
+
+lUpdateNav :: Integer -> LambdaMan -> LambdaMan
+lUpdateNav n man = man { lAgent = updateNav n (lAgent man) }
+
+gUpdateNav :: Integer -> Ghost -> Ghost
+gUpdateNav n ghost = ghost { gAgent = updateNav n (gAgent ghost) }
+
+updateNav :: Integer -> Agent -> Agent
+updateNav n agent = agent { curDir = n, nextMove = nm }
+    where m  = nextMove agent
+          nm = m + if fast agent then primTPM agent else secTPM agent
