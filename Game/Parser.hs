@@ -6,12 +6,12 @@ import Game.Types
 
 import Text.ParserCombinators.Parsec
 
-rawGameMap :: GenParser Char st (GameMap a)
+rawGameMap :: GenParser Char st GameMap
 rawGameMap =
     do result <- many rawGameMapLine
        return (GM result)
 
-rawGameMapLine :: GenParser Char st [a]
+rawGameMapLine :: GenParser Char st [Element]
 rawGameMapLine =
     do result <- many element
        char '\n'
