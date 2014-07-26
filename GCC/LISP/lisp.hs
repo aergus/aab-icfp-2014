@@ -2,7 +2,7 @@
 module Lisp where
 
 import qualified Data.Map as M
-
+import Data.List
 
 data Expression = App Expression [Expression] 
             | Name String
@@ -25,7 +25,40 @@ data Expression = App Expression [Expression]
             | List [Expression]
             | LamFApp String [String] Expression [Expression]  --only for compilation
 
-prepareRecursions :: 
+freeVariables :: Expression -> [String]
+freeVariables (Name s) = [s]
+freeVariables (IntLit _) = []
+freeVariables (Cons e1 e2) = (freeVariables e1) `union` (freeVariables e2)
+freeVariables (Lam vars e) = (freeVariables e) \\ vars
+freeVariables (LamF f vars e) = (freeVariables e) \\ (f:vars)
+freeVariables (Add e1 e2) = (freeVariables e1) `union` (freeVariables e2)
+freeVariables (Sub e1 e2) = (freeVariables e1) `union` (freeVariables e2)
+freeVariables (Mul e1 e2) = (freeVariables e1) `union` (freeVariables e2)
+freeVariables (Div e1 e2) = (freeVariables e1) `union` (freeVariables e2)
+freeVariables (Lt e1 e2) = (freeVariables e1) `union` (freeVariables e2)
+freeVariables (Lte e1 e2) = (freeVariables e1) `union` (freeVariables e2)
+freeVariables (Gt e1 e2) = (freeVariables e1) `union` (freeVariables e2)
+freeVariables (Gte e1 e2) = (freeVariables e1) `union` (freeVariables e2)
+freeVariables (Eq e1 e2) = (freeVariables e1) `union` (freeVariables e2)
+freeVariables (If e1 e2 e3) = (freeVariables e1) `union` (freeVariables e2) `union` (freeVariables e3)
+freeVariables (Car e) = freeVariables e
+freeVariables (Cdr e) = freeVariables e
+freeVariables (List exps) = foldr union [] (map freeVariables exps)
+
+prepare1 :: Expression -> Expression --turn LamF into Lam when possible
+prepare1 (LamF f args exp) = case f `elem` (freeVariables exp) of
+                                        True -> LamF f args exp
+                                        False-> Lam args exp
+prepare1 x                 = x
+
+prepare2 :: Expression -> Expression --turn App (LamF f args exp) exps into LamFApp f args exp exps
+prepare2 (App (LamF f args exp) exps) = LamFApp f args (prepare2 exp) (map prepare2 exps)
+prepare2 x                            = x
+
+prepare3 :: [String] -> Expression -> Expression --turn remaining (LamF f args exp) into (Lam args1 (LamFApp f args exp exps))
+prepare3 freenames (LamF f args exp)  = let (newvars,rest) = splitAt (length args) freenames in
+                                         (Lam newvars (LamFApp f args (prepare3 rest exp) (map Name newvars))) 
+prepare3 _ _ = undefined
 
 data LInstr a =     LDC Int      --LDC loads int constant 
                   | LD Int Int   --LD n i loads i'th value in n'th frame
@@ -124,3 +157,6 @@ resolveLabels = (\(_,subs,code) -> map (resolve (M.fromList subs)) code) . (fold
                   resolve subsm x           = fmap (const 0) x
 
 
+
+compile :: Expression -> [LInstr Int]
+compile = resolveLabels . transform
