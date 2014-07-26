@@ -1,6 +1,6 @@
-module Game.State where
+module Ghc.State where
 
-import Game.Types
+import Ghc.Types
 import Data.Word
 import Data.Bits
 import Control.Monad
