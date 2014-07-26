@@ -4,6 +4,22 @@ module GCC.LISP.Base where
 import qualified Data.Map as M
 import Data.List
 
+
+
+type LISP = (Expression,[(String, Expression)])
+
+
+
+
+{-
+compile :: LISP -> LabelLCode
+compile (main,defs) = resolveLabels . transform $ (prepare main, [(s,prepare exp) | (s,exp) <- defs])
+
+
+transform :: LISP -> LInstr String
+transform (main,defs) = newcontext rootlabels
+-}
+
 data Expression = App Expression [Expression]
             | Name String
             | IntLit Int
