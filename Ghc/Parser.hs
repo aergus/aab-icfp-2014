@@ -10,7 +10,7 @@ import qualified Data.Map as M
 
 type EArg = Arg (Either String Word8)
 type EInstr = Instr EArg
-data ELine = Line {def :: [(String, Word8)], lbls :: [String], instr :: EInstr}
+data ELine = Line {def :: [(String, Word8)], defEnum :: [String], lbls :: [String], instr :: EInstr}
         deriving (Show)
 
 reg = zip (map (:[]) ['a'..'h']++["pc"]) [A .. PC]
@@ -85,9 +85,11 @@ ghcMem = brackets lexer $ fmap (Memory) $ ghcEither
 ghcLine :: GenParser Char s ELine
 ghcLine = do
   defs <- many ghcDef
+  defEnums <- many ghcDefEnum
   lbls <- many $ try ghcLabel
+
   instr <- ghcInstruction
-  return $Line defs lbls instr
+  return $Line defs defEnums lbls instr
 
 ghcDef :: GenParser Char s (String, Word8) 
 ghcDef = do
@@ -96,6 +98,12 @@ ghcDef = do
         num <- decimal lexer
         whiteSpace lexer
         return (id, fromInteger num)
+
+ghcDefEnum :: GenParser Char s String 
+ghcDefEnum = do
+        reserved lexer "DefEnum"
+        id <- identifier lexer
+        return id
 
 ghcLabel :: GenParser Char s String
 ghcLabel = do ident <- identifier lexer
@@ -139,6 +147,7 @@ ghcLanguage = LanguageDef { commentStart="",
                 opLetter=letter,
                 reservedNames=map fst reg ++ [
                         "DEF",
+                        "DefEnum",
                         "MOV",
                         "INC",
                         "DEC",
@@ -160,8 +169,12 @@ ghcLanguage = LanguageDef { commentStart="",
 parseGhc :: String -> Either (ParseError) [ELine]
 parseGhc = parse ghcParser "unknown"
 
+--TODO: REWRITE
 resolveIdentifier :: [ELine] -> [Instruction]
-resolveIdentifier el = let m = M.fromList $ concat $ zipWith (\a b -> zip a (repeat b)) (map lbls el) [0..] ++ map (def) el
+resolveIdentifier el = let m1 = concat (zipWith (\a b -> zip a (repeat b)) (map lbls el) [0..])
+                           m2 = concat $ map def el
+                           m3 = zip (concat $ map defEnum el) [255,254..0]
+                           m =M.fromList $ m1 ++ m2 ++ m3
                            f (Right x) = x
                            f (Left y)  = m M.! y
                        in map ( fmap (fmap f). instr) el
