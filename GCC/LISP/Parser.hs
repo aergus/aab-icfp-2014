@@ -4,6 +4,7 @@ import Text.Parsec.Token
 import Text.ParserCombinators.Parsec
 import Control.Monad
 import Data.Int
+import Data.List
 import qualified Data.Map as M
 
 import GCC.LISP.Base
@@ -49,12 +50,19 @@ twoarity  = [
 threearity  = [
 	("If",If)]
 
-lispParser :: GenParser Char s Expression
+lispParser :: GenParser Char s [(String,Expression)]
 lispParser = do
 	whiteSpace lexer
-	e <- lispExpression
+	e <- many lispDefinition
 	eof
 	return e
+
+lispDefinition :: GenParser Char s (String, Expression)
+lispDefinition = do
+	ident <- identifier lexer
+	colon lexer
+	e <- lispExpression
+	return (ident, e)
 
 lispExpression :: GenParser Char s Expression
 lispExpression = lispName <|> lispInt <|> (parens lexer lispTerm)
@@ -129,5 +137,12 @@ lispLanguage = LanguageDef { commentStart="",
 		reservedOpNames=map fst twoarity ++ ["\\", "\\r", "[]", "->"]
 }
 
-pipeline :: String -> [LInstr Int]
-pipeline = (\(Right x) -> compile x) . parse lispParser "string"
+parseLisp :: String -> Either ParseError LISP
+parseLisp xs = parse lispParser "String" xs >>= extractMain
+
+extractMain :: [(String, Expression)] -> Either ParseError LISP
+extractMain xs = let (a,b) = partition ((=="main").fst) xs
+		 in case a of
+		    [] -> fail "no main"
+		    [(_,x)] -> return (x,b)
+		    _ -> fail "multiple mains"
