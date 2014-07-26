@@ -27,5 +27,5 @@ _not =
 (\ a -> (IF (== a 0) 1 0))
 
 ;_filter :: (a -> Int) -> [a] -> [a]
-_filter = (\ p l -> (if (p (car l)) (: (car l) (_filter p (cdr l))) (_filter p (cdr l)))) 
+_filter = (\ p l -> (if (nil l) 0 (if (p (car l)) (: (car l) (_filter p (cdr l))) (_filter p (cdr l))))) 
 
