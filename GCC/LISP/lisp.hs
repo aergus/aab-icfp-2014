@@ -49,7 +49,23 @@ prepare1 :: Expression -> Expression --turn LamF into Lam when possible
 prepare1 (LamF f args exp) = case f `elem` (freeVariables exp) of
                                         True -> LamF f args exp
                                         False-> Lam args exp
+prepare1 (Car e)           = Car (prepare1 e)
+prepare1 (Crd e)           = Cdr (prepare1 e)
+prepare1 (Add e1 e2)       = Add (prepare1 e1) (prepare1 e2)
+prepare1 (Sub e1 e2)       = Sub (prepare1 e1) (prepare1 e2)
+prepare1 (Mul e1 e2)       = Mul (prepare1 e1) (prepare1 e2)
+prepare1 (Div e1 e2)       = Div (prepare1 e1) (prepare1 e2)
+prepare1 (Lt e1 e2)        = Lt (prepare1 e1) (prepare1 e2)
+prepare1 (Lte e1 e2)       = Lte (prepare1 e1) (prepare1 e2)
+prepare1 (Gt e1 e2)        = Gt (prepare1 e1) (prepare1 e2)
+prepare1 (Gte e1 e2)       = Gte (prepare1 e1) (prepare1 e2)
+prepare1 (Eq e1 e2)        = Eq (prepare1 e1) (prepare1 e2)
+prepare1 (Cons e1 e2)      = Cons (prepare1 e1) (prepare1 e2)
+prepare1 (Lam vars e)      = Lam vars (prepare1 e)
+prepare1 (List exps)       = List (map prepare1 exps)
+prepare1 (If e1 e2 e3)     = If (prepare1 e1) (prepare1 e2) (prepare1 e3)
 prepare1 x                 = x
+
 
 prepare2 :: Expression -> Expression --turn App (LamF f args exp) exps into LamFApp f args exp exps
 prepare2 (App (LamF f args exp) exps) = LamFApp f args (prepare2 exp) (map prepare2 exps)
@@ -58,7 +74,7 @@ prepare2 x                            = x
 prepare3 :: [String] -> Expression -> Expression --turn remaining (LamF f args exp) into (Lam args1 (LamFApp f args exp exps))
 prepare3 freenames (LamF f args exp)  = let (newvars,rest) = splitAt (length args) freenames in
                                          (Lam newvars (LamFApp f args (prepare3 rest exp) (map Name newvars))) 
-prepare3 _ _ = undefined
+prepare3 freenames 
 
 data LInstr a =     LDC Int      --LDC loads int constant 
                   | LD Int Int   --LD n i loads i'th value in n'th frame
@@ -108,16 +124,16 @@ newcontext :: Context
 newcontext = (M.fromList [("worldstate",(0,0)),("undocumented",(0,1))],0) --the two arguments of main
 
 tr :: [Label] -> Context -> Expression -> LabelLCode
-tr ls ctxt (Add e1 e2)   = (tr (split 0 ls) ctxt e2) <+> (tr (split 1 ls) ctxt e1) <+> (toCode [ADD])
-tr ls ctxt (Sub e1 e2)   = (tr (split 0 ls) ctxt e2) <+> (tr (split 1 ls) ctxt e1) <+> (toCode [SUB])
-tr ls ctxt (Mul e1 e2)   = (tr (split 0 ls) ctxt e2) <+> (tr (split 1 ls) ctxt e1) <+> (toCode [MUL])
-tr ls ctxt (Div e1 e2)   = (tr (split 0 ls) ctxt e2) <+> (tr (split 1 ls) ctxt e1) <+> (toCode [DIV])
-tr ls ctxt (Lt e1 e2)    = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [CGT])
-tr ls ctxt (Lte e1 e2)   = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [CGTE])
-tr ls ctxt (Gt e1 e2)    = (tr (split 0 ls) ctxt e2) <+> (tr (split 1 ls) ctxt e1) <+> (toCode [CGT])
-tr ls ctxt (Gte e1 e2)   = (tr (split 0 ls) ctxt e2) <+> (tr (split 1 ls) ctxt e1) <+> (toCode [CGTE])
-tr ls ctxt (Eq e1 e2)    = (tr (split 0 ls) ctxt e2) <+> (tr (split 1 ls) ctxt e1) <+> (toCode [CEQ])
-tr ls ctxt (Cons e1 e2)  = (tr (split 0 ls) ctxt e2) <+> (tr (split 1 ls) ctxt e1) <+> (toCode [CONS])
+tr ls ctxt (Add e1 e2)   = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [ADD])
+tr ls ctxt (Sub e1 e2)   = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [SUB])
+tr ls ctxt (Mul e1 e2)   = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [MUL])
+tr ls ctxt (Div e1 e2)   = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [DIV])
+tr ls ctxt (Lt e1 e2)    = (tr (split 0 ls) ctxt e2) <+> (tr (split 1 ls) ctxt e1) <+> (toCode [CGT])
+tr ls ctxt (Lte e1 e2)   = (tr (split 0 ls) ctxt e2) <+> (tr (split 1 ls) ctxt e1) <+> (toCode [CGTE])
+tr ls ctxt (Gt e1 e2)    = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [CGT])
+tr ls ctxt (Gte e1 e2)   = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [CGTE])
+tr ls ctxt (Eq e1 e2)    = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [CEQ])
+tr ls ctxt (Cons e1 e2)  = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [CONS])
 tr ls ctxt (Car e)       = (tr ls ctxt e) <+> (toCode [CAR])
 tr ls ctxt (Cdr e)       = (tr ls ctxt e) <+> (toCode [CAR])
 tr ls ctxt (App ef exps) = foldr (<+>) ((tr (split 0 ls) ctxt ef) <+> toCode [AP (length exps)]) 
@@ -137,7 +153,7 @@ tr _ _ (List [])            = toCode [LDC 0]
 tr ls ctxt (List exps)      = foldr1 (<+>) ((zipWith (\e i->tr (split i ls) ctxt e) exps [0..])++(replicate (length exps -1) (toCode [CONS])))
 
 transform :: Expression -> LabelLCode
-transform exp = tr rootlabels newcontext exp
+transform exp = (tr rootlabels newcontext exp) <+> (toCode [RTN])
 
 
 
