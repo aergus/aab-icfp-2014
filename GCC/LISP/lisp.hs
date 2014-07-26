@@ -179,7 +179,7 @@ tr ls ctxt (Gte e1 e2)   = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e
 tr ls ctxt (Eq e1 e2)    = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [CEQ])
 tr ls ctxt (Cons e1 e2)  = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [CONS])
 tr ls ctxt (Car e)       = (tr ls ctxt e) <+> (toCode [CAR])
-tr ls ctxt (Cdr e)       = (tr ls ctxt e) <+> (toCode [CAR])
+tr ls ctxt (Cdr e)       = (tr ls ctxt e) <+> (toCode [CDR])
 tr ls ctxt (Nil e)       = (tr ls ctxt e) <+> (toCode [ATOM])
 tr ls ctxt (App ef exps) = foldr (<+>) ((tr (split 0 ls) ctxt ef) <+> toCode [AP (length exps)]) 
                                       (zipWith (\e i->tr (split i ls) ctxt e) exps [1..])
@@ -203,8 +203,9 @@ tr _ (ctxtm,lvl) (Name str) = case M.lookup str ctxtm of
                                Nothing -> error ("unbound variable "++ str)
                                Just (l,i) -> toCode [LD (lvl-l) i]
 tr _ _ (List [])            = toCode [LDC 0]
-tr ls ctxt (List exps)      = foldr1 (<+>) ((zipWith (\e i->tr (split i ls) ctxt e) exps [0..])++(replicate (length exps -1) (toCode [CONS])))
-
+tr ls ctxt (List exps)      = foldr1 (<+>) ((zipWith (\e i->tr (split i ls) ctxt e) (exps++[IntLit 0]) [0..])
+                                         ++(replicate (length exps) (toCode[CONS])))
+tr _ _ (LamF _ _ _) = error "LamF in tr!"
 
 
 transform :: Expression -> LabelLCode
@@ -230,4 +231,4 @@ resolveLabels = (\(_,subs,code) -> map (resolve (M.fromList subs)) code) . (fold
 
 
 compile :: Expression -> [LInstr Int]
-compile = resolveLabels . transform
+compile = resolveLabels . transform . prepare
