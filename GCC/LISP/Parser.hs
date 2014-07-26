@@ -1,4 +1,4 @@
-module GCC.Lisp.Parser where
+module GCC.LISP.Parser where
 
 import Text.Parsec.Token
 import Text.ParserCombinators.Parsec
@@ -6,9 +6,9 @@ import Control.Monad
 import Data.Int
 import qualified Data.Map as M
 
-import Lisp
+import GCC.LISP.Base
 {-
-data Expression = App Expression [Expression] 
+data Expression = App Expression [Expression]
             | Name String
             | IntLit Int
             | Cons Expression Expression
@@ -70,18 +70,18 @@ lispInt = do
 
 lispTerm = lispOnearity <|> lispTwoarity <|> lispThreearity <|> lispLam <|> lispLamF <|> lispList <|> lispApp
 
-lispLam = do 
-  reservedOp lexer "\\" 
+lispLam = do
+  reservedOp lexer "\\"
   xs <- many $ identifier lexer
   e <- lispExpression
-  return $ Lam xs e  
+  return $ Lam xs e
 
-lispLamF = do 
-  reservedOp lexer "\\r" 
+lispLamF = do
+  reservedOp lexer "\\r"
   f <- identifier lexer
   xs <- many $ identifier lexer
   e <- lispExpression
-  return $ LamF f xs e  
+  return $ LamF f xs e
 
 lispList = do
   reservedOp lexer "[]"
