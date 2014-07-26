@@ -23,7 +23,7 @@ runGHC = undefined
 lambdaLoop :: GameState s -> ST s (LambdaMan, Integer, Integer)
 lambdaLoop gs =
   do gs' <- lambdaTick gs
-     pills <- readSTRef (pillCount gs)
+     pills <- readSTRef (pillCount gs')
      m <- readArray (lambdaMen gs') LOne
      man <- readSTRef m
      utc <- readSTRef (ticks gs')
@@ -31,7 +31,7 @@ lambdaLoop gs =
              lLives man == 0 ||
              utc > 127 * (fst $ mapDims gs') * (snd $ mapDims gs') * 16)
      then return (man, utc, pills)
-     else lambdaLoop gs'
+     else do { modifySTRef (ticks gs') (+1); lambdaLoop gs' }
 
 lambdaTick :: GameState s -> ST s (GameState s)
 lambdaTick gs =
@@ -49,7 +49,6 @@ lambdaTick gs =
                                                else return Nothing
                                         return dir) (ghosts gs)
 
-       -- TODO: set agent directions
        -- HACK for going through all array members
        dummy <- mapArray (\ l -> do m <- readSTRef l
                                     dir'' <- readArray lambdaDirs (lIndex m)
@@ -75,8 +74,14 @@ lambdaTick gs =
                                                (modifySTRef g $ moveGhost $
                                                     fromJust dir'))) (ghosts gs)
 
-       modifySTRef (frightMode gs) updateFrightMode
-       -- TODO: update ghosts?
+       fright <- readSTRef (frightMode gs)
+       when (isJust fright) $
+           if (fromJust fright) == 1
+           then do dummy <- mapArray (\ g -> do modifySTRef g (setFright False))
+                       (ghosts gs)
+                   writeSTRef (frightMode gs) Nothing
+           else do writeSTRef (frightMode gs)
+                       (do { f <- fright; return (f - 1) })
 
        when (utc == 127 * 200 || utc == 127 * 400)
            (writeSTRef (fruitState gs) True)
@@ -84,28 +89,28 @@ lambdaTick gs =
        when (utc == 127 * 280 || utc == 127 * 480)
            (writeSTRef (fruitState gs) False)
 
+       fruitOn <- readSTRef (fruitState gs)
+
        dummy <- mapArray (\ l -> do m <- readSTRef l
                                     el <- readArray gm (lPos m)
                                     when (isPill el)
-                                        (do modifySTRef l (addPoints 10)
+                                        (do modifySTRef l (eatPoints 10)
                                             modifySTRef (pillCount gs) ((-) 1))
                                     when (isPowerPill el)
-                                        (do modifySTRef l (addPoints 50)
+                                        (do modifySTRef l (eatPoints 50)
                                             dummy' <- mapArray (\ g ->
                                                 do modifySTRef g
-                                                       (gSetSpeed False)
-                                                   return ()) (ghosts gs)
-                                            -- TODO: correct fright mode
-                                            -- duration, update ghosts
+                                                       (setFright True))
+                                                (ghosts gs)
+                                            -- TODO: fright mode duration
                                             writeSTRef (frightMode gs)
-                                                (Just 100))
-                                    when (isFruit el)
+                                                (Just 1000))
+                                    when (isFruit el && fruitOn)
                                         (do modifySTRef l
-                                                (addPoints (fruitPoints $
+                                                (eatPoints (fruitPoints $
                                                      level gs)))
                                     when (isEatable el)
-                                        (do writeArray gm (lPos m) Empty
-                                            modifySTRef l (lSetSpeed False))
+                                        (do writeArray gm (lPos m) Empty)
                                     dummy' <- mapArray (\ g ->
                                         do m' <- readSTRef g
                                            when (lPos m == gPos m' &&
@@ -123,6 +128,22 @@ lambdaTick gs =
                                                                (reset False)))
                                         (ghosts gs)
                                     return ()) (lambdaMen gs)
+
+       dummy <- mapArray (\ l -> do m <- readSTRef l
+                                    dir'' <- readArray lambdaDirs (lIndex m)
+                                    dir' <- dir''
+                                    when (isJust dir')
+                                       (do modifySTRef l (lUpdateNav $
+                                               fromJust dir')))
+           (lambdaMen gs)
+
+       dummy <- mapArray (\ g -> do m <- readSTRef g
+                                    dir'' <- readArray ghostDirs (gIndex m)
+                                    dir' <- dir''
+                                    when (isJust dir')
+                                       (do modifySTRef g (gUpdateNav $
+                                               fromJust dir')))
+           (ghosts gs)
 
        return gs
     where gm = gameMap gs
@@ -142,9 +163,12 @@ moveAgent :: Agent -> Integer -> Agent
 moveAgent agent dir = agent { curPos = dirToCoords pos dir }
    where pos = curPos agent
 
--- TODO: write this translator
 dirToCoords :: (Integer, Integer) -> Integer -> (Integer, Integer)
-dirToCoords pos dir = undefined
+dirToCoords (x, y) 0 = (x, y - 1)
+dirToCoords (x, y) 1 = (x + 1, y)
+dirToCoords (x, y) 2 = (x, y + 1)
+dirToCoords (x, y) 3 = (x - 1, y)
+dirToCoords _      _ = undefined -- TODO: add exception handling?
 
 updateFrightMode :: Maybe Integer -> Maybe Integer
 updateFrightMode fright  = if (isNothing fright || fromJust fright == 0)
@@ -152,8 +176,15 @@ updateFrightMode fright  = if (isNothing fright || fromJust fright == 0)
                            else do f <- fright
                                    return (f - 1)
 
-addPoints :: Integer -> LambdaMan -> LambdaMan
-addPoints n man = man { lScore = (lScore man) + n }
+eatPoints :: Integer -> LambdaMan -> LambdaMan
+eatPoints n man =
+    man { lAgent = setSpeed False (lAgent man), lScore = (lScore man) + n }
+
+setFright :: Bool -> Ghost -> Ghost
+setFright v ghost = ghost { gAgent = newAgent, gFrightened = v }
+   where a = setSpeed (not v) (gAgent ghost)
+         d = curDir a
+         newAgent = a { curDir = if v then mod (d + 2) 4 else d }
 
 lSetSpeed :: Bool -> LambdaMan -> LambdaMan
 lSetSpeed v man = man { lAgent = setSpeed v (lAgent man) }
@@ -172,3 +203,14 @@ reset v ghost = ghost { gAgent = backToStart (gAgent ghost), gVisible = v }
 
 backToStart :: Agent -> Agent
 backToStart agent = agent { curPos = initPos agent, curDir = initDir agent }
+
+lUpdateNav :: Integer -> LambdaMan -> LambdaMan
+lUpdateNav n man = man { lAgent = updateNav n (lAgent man) }
+
+gUpdateNav :: Integer -> Ghost -> Ghost
+gUpdateNav n ghost = ghost { gAgent = updateNav n (gAgent ghost) }
+
+updateNav :: Integer -> Agent -> Agent
+updateNav n agent = agent { curDir = n, nextMove = nm }
+    where m  = nextMove agent
+          nm = m + if fast agent then primTPM agent else secTPM agent
