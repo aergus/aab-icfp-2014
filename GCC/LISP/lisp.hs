@@ -44,13 +44,15 @@ freeVariables (If e1 e2 e3) = (freeVariables e1) `union` (freeVariables e2) `uni
 freeVariables (Car e) = freeVariables e
 freeVariables (Cdr e) = freeVariables e
 freeVariables (List exps) = foldr union [] (map freeVariables exps)
+freeVariables (App e exps) = foldr union (freeVariables e) (map freeVariables exps)
+ 
 
 prepare1 :: Expression -> Expression --turn LamF into Lam when possible
 prepare1 (LamF f args exp) = case f `elem` (freeVariables exp) of
                                         True -> LamF f args exp
                                         False-> Lam args exp
 prepare1 (Car e)           = Car (prepare1 e)
-prepare1 (Crd e)           = Cdr (prepare1 e)
+prepare1 (Cdr e)           = Cdr (prepare1 e)
 prepare1 (Add e1 e2)       = Add (prepare1 e1) (prepare1 e2)
 prepare1 (Sub e1 e2)       = Sub (prepare1 e1) (prepare1 e2)
 prepare1 (Mul e1 e2)       = Mul (prepare1 e1) (prepare1 e2)
@@ -64,17 +66,54 @@ prepare1 (Cons e1 e2)      = Cons (prepare1 e1) (prepare1 e2)
 prepare1 (Lam vars e)      = Lam vars (prepare1 e)
 prepare1 (List exps)       = List (map prepare1 exps)
 prepare1 (If e1 e2 e3)     = If (prepare1 e1) (prepare1 e2) (prepare1 e3)
+prepare1 (App e exps)      = App (prepare1 e) (map prepare1 exps)
 prepare1 x                 = x
 
 
 prepare2 :: Expression -> Expression --turn App (LamF f args exp) exps into LamFApp f args exp exps
 prepare2 (App (LamF f args exp) exps) = LamFApp f args (prepare2 exp) (map prepare2 exps)
-prepare2 x                            = x
+prepare2 (Car e)           = Car (prepare2 e)
+prepare2 (Cdr e)           = Cdr (prepare2 e)
+prepare2 (Add e1 e2)       = Add (prepare2 e1) (prepare2 e2)
+prepare2 (Sub e1 e2)       = Sub (prepare2 e1) (prepare2 e2)
+prepare2 (Mul e1 e2)       = Mul (prepare2 e1) (prepare2 e2)
+prepare2 (Div e1 e2)       = Div (prepare2 e1) (prepare2 e2)
+prepare2 (Lt e1 e2)        = Lt (prepare2 e1) (prepare2 e2)
+prepare2 (Lte e1 e2)       = Lte (prepare2 e1) (prepare2 e2)
+prepare2 (Gt e1 e2)        = Gt (prepare2 e1) (prepare2 e2)
+prepare2 (Gte e1 e2)       = Gte (prepare2 e1) (prepare2 e2)
+prepare2 (Eq e1 e2)        = Eq (prepare2 e1) (prepare2 e2)
+prepare2 (Cons e1 e2)      = Cons (prepare2 e1) (prepare2 e2)
+prepare2 (Lam vars e)      = Lam vars (prepare2 e)
+prepare2 (LamF f vars e)   = LamF f vars (prepare2 e)
+prepare2 (List exps)       = List (map prepare2 exps)
+prepare2 (If e1 e2 e3)     = If (prepare2 e1) (prepare2 e2) (prepare2 e3)
+prepare2 (App e exps)      = App (prepare2 e) (map prepare2 exps)
+prepare2 x                 = x
 
 prepare3 :: [String] -> Expression -> Expression --turn remaining (LamF f args exp) into (Lam args1 (LamFApp f args exp exps))
 prepare3 freenames (LamF f args exp)  = let (newvars,rest) = splitAt (length args) freenames in
-                                         (Lam newvars (LamFApp f args (prepare3 rest exp) (map Name newvars))) 
-prepare3 freenames 
+                                         (Lam newvars (LamFApp f args (prepare3 (rest \\ args) exp) (map Name newvars))) 
+prepare3 freenames (Car e)           = Car (prepare3 freenames e)
+prepare3 freenames (Cdr e)           = Cdr (prepare3 freenames e)
+prepare3 freenames (Add e1 e2)       = Add (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2)
+prepare3 freenames (Sub e1 e2)       = Sub (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2)
+prepare3 freenames (Mul e1 e2)       = Mul (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2)
+prepare3 freenames (Div e1 e2)       = Div (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2)
+prepare3 freenames (Lt e1 e2)        = Lt (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2)
+prepare3 freenames (Lte e1 e2)       = Lte (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2)
+prepare3 freenames (Gt e1 e2)        = Gt (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2)
+prepare3 freenames (Gte e1 e2)       = Gte (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2)
+prepare3 freenames (Eq e1 e2)        = Eq (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2)
+prepare3 freenames (Cons e1 e2)      = Cons (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2)
+prepare3 freenames (Lam vars e)      = Lam vars (prepare3 (freenames \\ vars) e)
+prepare3 freenames (List exps)       = List (zipWith (\i e -> prepare3 (split i freenames) e) [0..] exps)
+prepare3 freenames (If e1 e2 e3)     = If (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2) (prepare3 (split 2 freenames) e3)
+prepare3 freenames (App e exps)      = App (prepare3 (split 0 freenames) e) (zipWith (\i e -> prepare3 (split i freenames) e) [1..] exps)
+prepare3 _ x                 = x
+
+prepare :: Expression -> Expression
+prepare = (prepare3 rootlabels) . prepare2 . prepare1
 
 data LInstr a =     LDC Int      --LDC loads int constant 
                   | LD Int Int   --LD n i loads i'th value in n'th frame
@@ -145,12 +184,22 @@ tr (lt:lf:ls) ctxt (If e et ef) = (tr (split 0 ls) ctxt e)
 tr (l:ls) (ctxtm,lvl) (Lam vars exp) = let newcontext = ((M.fromList (zipWith (\var i ->(var, (lvl+1,i))) vars [0..])) `M.union` ctxtm,lvl+1) in
                                           (toCode [LDF l]) 
                                       <+> (floatAt l ( (tr ls newcontext exp)<+>(toCode [RTN])))
+tr (l1:l2:ls) (ctxtm,lvl) (LamFApp f vars exp exps) = 
+                   let l=length vars in
+                   let newcontext = ((M.fromList (zipWith (\var i -> (var, (lvl+2,i))) vars [0..]) `M.union` (M.fromList[(f, (lvl+1,0))]) `M.union` ctxtm, lvl+2)) in
+                    case length exps == l of
+                     True -> (toCode [DUM 1, LDF l1, LDF l2, RAP 1, RTN]
+                              <+> (floatAt l1 ((tr (split 0 ls) newcontext exp)<+>(toCode [RTN])))
+                              <+> (floatAt l2 ((foldr1 (<+>) (zipWith (\e i->tr (split i ls) (ctxtm,lvl+1) e) exps [1..]))<+>(toCode [LD 0 0, AP l, RTN]))))
+                     False -> error "wrong number of arguments in LamFApp"
 tr _ _ (IntLit n) = toCode [LDC n]
 tr _ (ctxtm,lvl) (Name str) = case M.lookup str ctxtm of
                                Nothing -> error "unbound variable!"
                                Just (l,i) -> toCode [LD (lvl-l) i]
 tr _ _ (List [])            = toCode [LDC 0]
 tr ls ctxt (List exps)      = foldr1 (<+>) ((zipWith (\e i->tr (split i ls) ctxt e) exps [0..])++(replicate (length exps -1) (toCode [CONS])))
+
+
 
 transform :: Expression -> LabelLCode
 transform exp = (tr rootlabels newcontext exp) <+> (toCode [RTN])
