@@ -6,13 +6,16 @@ _lastTuple =
 
 _foldr =
 (\r foldr f base xs ->
-    (IF (NIL xs) base (f (CAR x) (foldr f base (CDR x)))))
+    (IF (NIL xs) base (f (CAR xs) (foldr f base (CDR xs)))))
 
 _map =
-(\r map f xs -> (IF (NIL xs) 0 (: (f (CAR x)) (map f (CDR xs)))))
+(\r map f xs -> (IF (NIL xs) 0 (: (f (CAR xs)) (map f (CDR xs)))))
 
 _elem =
-(\ x xs -> (_foldr (\ y v -> (or (== x y) v)) 0 xs))
+(\ x xs -> (_foldr (\ y v -> (_or (== x y) v)) 0 xs))
+
+_mod =
+(\r n m -> (- n (/ n m)))
 
 _and =
 (\ a b -> (IF (== a 1) (IF (== b 1) 1 0) 1))
