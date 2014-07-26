@@ -25,7 +25,7 @@ element =
                  '#'  -> Wall
                  '.'  -> Pill
                  'o'  -> PowerPill
-                 '%'  -> Fruit undefined
+                 '%'  -> Fruit
                  '\\' -> LambdaMan undefined
                  '='  -> Ghost undefined)
 

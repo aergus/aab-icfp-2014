@@ -8,7 +8,6 @@ import Data.Array.ST
 import Data.Ix
 import Data.STRef
 
-
 newtype GameMap = GM [[Element]]
 
 instance Show GameMap where
@@ -16,21 +15,40 @@ instance Show GameMap where
         where showLikeString = foldr (\ t -> ((show t) ++)) ""
 
 data Element =
-    Empty | Wall | Pill | PowerPill | Fruit Fruit |
-    LambdaMan LambdaMan | Ghost Ghost
+    Empty | Wall | Pill | PowerPill | Fruit | LambdaMan LambdaMan | Ghost Ghost
 
 instance Show Element where
     show Empty         = " "
     show Wall          = "#"
     show Pill          = "."
     show PowerPill     = "o"
-    show (Fruit _)     = "%"
+    show Fruit         = "%"
     show (LambdaMan _) = "\\"
     show (Ghost _)     = "="
+
+
+isWall :: Element -> Bool
+isWall Wall = True
+isWall _ = False
+
+isPill :: Element -> Bool
+isPill Pill = True
+isPill _    = False
 
 isPowerPill :: Element -> Bool
 isPowerPill PowerPill = True
 isPowerPill _         = False
+
+isFruit :: Element -> Bool
+isFruit Fruit = True
+isFruit _     = False
+
+isEatable :: Element -> Bool
+isEatable e = isPill e || isPowerPill e || isFruit e
+
+-- TODO: add correct fruit points
+fruitPoints :: Integer -> Integer
+fruitPoints _ = 100
 
 data Fruit = Fr { fActive :: Bool, fFlavour :: Flavour }
 
@@ -44,6 +62,7 @@ data Agent = Ag {
     curDir   :: Integer,
     primTPM  :: Integer,
     secTPM   :: Integer,
+    fast     :: Bool,
     nextMove :: Integer
 }
 
@@ -54,7 +73,7 @@ data LambdaMan = LM {
     lPowerPill   :: Maybe Integer,
     lGhostsEaten :: Maybe Integer,
     lLives       :: Integer,
-    lScode       :: Integer
+    lScore       :: Integer
 }
 
 data Ghost = Gh {
@@ -71,9 +90,11 @@ data GhostIndex = GOne | GTwo | GThree | GFour deriving (Eq, Ord, Ix)
 
 data GameState s = GS {
     ticks      :: STRef s Integer,
-    gameMap    :: STArray s (Int, Int) Element,
-    lambdaMen  :: STArray s LambdaIndex LambdaMan,
-    ghosts     :: STArray s GhostIndex Ghost,
+    gameMap    :: STArray s (Integer, Integer) Element,
+    lambdaMen  :: STArray s LambdaIndex (STRef s LambdaMan),
+    ghosts     :: STArray s GhostIndex (STRef s Ghost),
     frightMode :: STRef s (Maybe Integer),
-    pillCount  :: STRef s Integer
+    fruitState :: STRef s Bool,
+    pillCount  :: STRef s Integer,
+    level      :: Integer
  }

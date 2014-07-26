@@ -8,74 +8,126 @@ import Game.Types
 import Control.Monad
 import Control.Monad.ST
 import Data.Array.MArray
+import Data.Array.ST
 import Data.Array.Unboxed
 import Data.Maybe
 import Data.STRef
 
-runGCC :: GameState s -> LambdaManCode -> ST s Integer
+runGCC :: GameState s -> LambdaManCode -> ST s (Maybe Integer)
 runGCC = undefined
 
-runGHC :: GameState s -> GhostCode -> ST s Integer
+runGHC :: GameState s -> GhostCode -> ST s (Maybe Integer)
 runGHC = undefined
 
 lambdaTick :: GameState s -> ST s (GameState s)
 lambdaTick gs =
-    do lambdaDirs <- newArray_ (LOne, LTwo) Nothing
-       forM_ (lambdaMen gs) $ \ l -> do dir <- if ticks == nextMove (lAgent l)
-                                               then runGCC gs (lCode l)
-                                               else Nothing
-                                        writeArray lambdaDirs (lIndex l) dir
+    do utc <- readSTRef (ticks gs)
 
-       ghostDirs <- newArray_ (GOne, GFour) Nothing
-       forM_ (ghosts gs) $ \ g -> do dir <- if ticks == nextMove (gAgent g)
-                                            then runGHC gs (gCode g)
-                                            else Nothing
-                                     writeArray ghostDirs (gIndex g) dir
+       lambdaDirs <- mapArray (\ l -> do m <- readSTRef l
+                                         dir <- if utc == nextMove (lAgent m)
+                                                then runGCC gs (lCode m)
+                                                else return Nothing
+                                         return dir) (lambdaMen gs)
 
-       forM_ (lambdaMen gs) $ \ l -> do dir <- readArray lambdaDirs (lIndex l)
-                                        when (isJust dir) $
-                                            writeArray
-                                                (lambdaMen gs) (lIndex l) $
-                                                moveLambdaMan l (gameMap gs) $
-                                                    fromJust dir
+       ghostDirs <- mapArray (\ g -> do m <- readSTRef g
+                                        dir <- if utc == nextMove (gAgent m)
+                                               then runGHC gs (gCode m)
+                                               else return Nothing
+                                        return dir) (ghosts gs)
 
-       forM_ (ghosts gs) $ \ g -> do dir <- readArray ghostDirs (gIndex g)
-                                     when (isJust dir) $
-                                         writeArray (ghosts gs) (gIndex g) $
-                                               moveGhost g (gameMap gs) $
-                                                    fromJust dir
+       -- HACK for going through all array members
+       dummy <- mapArray (\ l -> do m <- readSTRef l
+                                    dir'' <- readArray lambdaDirs (lIndex m)
+                                    dir' <- dir''
+                                    when (isJust dir')
+                                       (do target <- readArray gm
+                                               (dirToCoords (lPos m)
+                                                    (fromJust dir'))
+                                           when (not $ isWall target)
+                                               (modifySTRef l $ moveLambdaMan $
+                                                    fromJust dir')))
+                    (lambdaMen gs)
 
-       fright <- readSTRef (frightMode 0)
-       when (isJust fright) $
-           writeSTRef fright (if fromJust fright == 0
-                              then Nothing
-                              else do { f <- fright; return (f - 1) })
+       -- TODO: implement prohibited moves for ghosts
+       dummy <- mapArray (\ g -> do m <- readSTRef g
+                                    dir'' <- readArray ghostDirs (gIndex m)
+                                    dir' <- dir''
+                                    when (isJust dir')
+                                       (do target <- readArray gm
+                                               (dirToCoords (gPos m)
+                                                    (fromJust dir'))
+                                           when (not $ isWall target)
+                                               (modifySTRef g $ moveGhost $
+                                                    fromJust dir'))) (ghosts gs)
 
-       forM_ (lambdaMen gs) $ \ l -> do pos <- curPos (lAgent l)
-                                        element <- readArray (gameMap gs) pos
-                                        when (isPowerPill element) $
+       modifySTRef (frightMode gs) updateFrightMode
+
+       when (utc == 127 * 200 || utc == 127 * 400)
+           (writeSTRef (fruitState gs) True)
+
+       when (utc == 127 * 280 || utc == 127 * 480)
+           (writeSTRef (fruitState gs) False)
+
+       dummy <- mapArray (\ l -> do m <- readSTRef l
+                                    el <- readArray gm (lPos m)
+                                    when (isPill el)
+                                        (do modifySTRef l (addPoints 10)
+                                            modifySTRef (pillCount gs) ((-) 1))
+                                    when (isPowerPill el)
+                                        (do modifySTRef l (addPoints 50)
+                                            dummy' <- mapArray (\ g ->
+                                                do modifySTRef g
+                                                       (gSetSpeed False)
+                                                   return ()) (ghosts gs)
+                                            -- TODO: correct fright mode
+                                            -- duration, update ghosts
                                             writeSTRef (frightMode gs)
-                                                (Just 127 * 20)
+                                                (Just 100))
+                                    when (isFruit el)
+                                        (do modifySTRef l
+                                                (addPoints (fruitPoints $
+                                                     level gs)))
+                                    when (isEatable el)
+                                        (do writeArray gm (lPos m) Empty
+                                            modifySTRef l (lSetSpeed False))
+                                    return ()) (lambdaMen gs)
 
        return gs
+    where gm = gameMap gs
+          lPos = curPos . lAgent
+          gPos = curPos . gAgent
 
-moveLambdaMan :: LambdaMan -> GameMap -> Int -> LambdaMan
-moveLambdaMan man gameMap dir =
-    man { lAgent = moveAgent (lAgent man) gameMap (dirToCoords dir) }
+moveLambdaMan :: Integer -> LambdaMan -> LambdaMan
+moveLambdaMan dir man =
+    man { lAgent = moveAgent (lAgent man) dir }
 
-moveGhost :: Ghost -> GameMap -> Int -> Ghost
-moveGhost ghost gameMap dir = if odd (dir - curDir agent) &&
-                                  readArray gameMap coords == Wall
-                              then ghost
-                              else ghost { gAgent = moveAgent $
-                                  (gAgent ghost) gameMap (dirToCoords dir) }
-    where agent  = gAgent ghost
-          coords = dirToCoords dir
+moveGhost :: Integer -> Ghost -> Ghost
+moveGhost dir ghost =
+   ghost { gAgent = moveAgent (gAgent ghost) dir }
 
-moveAgent :: Agent -> GameMap -> (Int, Int) -> Agent
-moveAgent agent gameMap coords =  if readArray gameMap coords == Wall
-                                  then agent
-                                  else agent { curPos = coords }
+-- TODO: update nextMove
+moveAgent :: Agent -> Integer -> Agent
+moveAgent agent dir = agent { curPos = dirToCoords pos dir }
+   where pos = curPos agent
+
 -- TODO: write this translator
-dirToCoords :: Int -> (Int, Int)
-dirToCoords = undefined
+dirToCoords :: (Integer, Integer) -> Integer -> (Integer, Integer)
+dirToCoords pos dir = undefined
+
+updateFrightMode :: Maybe Integer -> Maybe Integer
+updateFrightMode fright  = if (isNothing fright || fromJust fright == 0)
+                           then Nothing
+                           else do f <- fright
+                                   return (f - 1)
+
+addPoints :: Integer -> LambdaMan -> LambdaMan
+addPoints n man = man { lScore = (lScore man) + n }
+
+lSetSpeed :: Bool -> LambdaMan -> LambdaMan
+lSetSpeed v man = man { lAgent = setSpeed v (lAgent man) }
+
+gSetSpeed :: Bool -> Ghost -> Ghost
+gSetSpeed v ghost = ghost { gAgent = setSpeed v (gAgent ghost) }
+
+setSpeed :: Bool -> Agent -> Agent
+setSpeed v agent = agent { fast = v }
