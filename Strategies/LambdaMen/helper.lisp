@@ -1,24 +1,24 @@
-accList:
-(\r accList x l -> (IF (== l 0) (CAR x) (accList (CRD x) (- l 1))))
+_accList:
+(\r accList x l -> (IF (== l 0) (CAR x) (accList (CDR x) (- l 1))))
 
-lastTuple:
-(\r lastTuple x l -> (IF (< l 2) (CRD x) (lastTuple (CRD x) (- l 1))))
+_lastTuple:
+(\r lastTuple x l -> (IF (< l 2) (CDR x) (lastTuple (CDR x) (- l 1))))
 
-foldr:
+_foldr:
 (\r foldr f base xs ->
-    (IF (NIL xs) base (f (CAR x) (foldr f base (CRD x)))))
+    (IF (NIL xs) base (f (CAR x) (foldr f base (CDR x)))))
 
-map:
-(\r map f xs -> (IF (NIL xs) 0 (: (f (CAR x)) (map f (CRD xs)))))
+_map:
+(\r map f xs -> (IF (NIL xs) 0 (: (f (CAR x)) (map f (CDR xs)))))
 
-elem:
-(\ x xs (_foldr (\ y v -> (or (== x y) v)) 0 xs))
+_elem:
+(\ x xs -> (_foldr (\ y v -> (or (== x y) v)) 0 xs))
 
-and:
+_and:
 (\ a b -> (IF (== a 1) (IF (== b 1) 1 0) 1))
 
-or:
+_or:
 (\ a b -> (IF (== a 0) (IF (== b 0) 0 1) 1))
 
-not:
+_not:
 (\ a -> (IF (== a 0) 1 0))
