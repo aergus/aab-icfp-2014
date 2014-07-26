@@ -1,4 +1,4 @@
-_dfs:
+_dfs =
 (\r dfs gameMap target dfsState ->
     (IF (NIL (CAR dfsState))
        (dfsState)
@@ -10,7 +10,7 @@ _dfs:
                  (_updateState (CAR (CAR dfsState))
                  (dfsState))))))
 
-_updateState:
+_updateState =
 (\ gameMap cell state ->
     (IF (__and (_cellFree gameMap (CAR cell) (- (CDR cell) 1))
                (_notVisited state (CAR cell) (- (CDR cell) 1)))
@@ -26,17 +26,17 @@ _updateState:
                     (_addNewCell (- (CAR cell) 1) (CDR cell) cell state)
                     (: (CAR (CDR state)) (CDR state)))))))
 
-_cellFree:
+_cellFree =
 (\ gameMap x y -> (__elem (_getCell gameMap x y) ([] 1 2 3 4)))
 
-_notVisited:
+_notVisited =
 (\ state x y -> (not (__elem (: x y) (CDR (CAR state)))))
 
-_addNewCell:
+_addNewCell =
 (\ gameMap y oldCell state ->
     (: (: (: x y) (CAR state))
        (: (: (: x y) (CDR (CAR state)))
           (: (: oldCell (: x y)) (CDR (CDR state))))))
 
-_getCell:
+_getCell =
 (\ gameMap x y -> (__accList (__accList gameMap x) y))

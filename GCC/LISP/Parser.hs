@@ -60,7 +60,7 @@ lispParser = do
 lispDefinition :: GenParser Char s (String, Expression)
 lispDefinition = do
 	ident <- identifier lexer
-	colon lexer
+	symbol lexer "="
 	e <- lispExpression
 	return (ident, e)
 
