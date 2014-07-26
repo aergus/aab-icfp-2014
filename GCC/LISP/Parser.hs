@@ -33,7 +33,8 @@ data Expression = App Expression [Expression]
 
 onearity = [
 	("Car",Car),
-	("Cdr",Cdr)]
+	("Cdr",Cdr),
+	("Nil",Nil)]
 twoarity  = [
 	(":",Cons),
 	("+",Add),
@@ -64,6 +65,7 @@ lispName = do
 
 lispInt = do
   n <- decimal lexer
+  whiteSpace lexer
   return $ IntLit$ fromInteger $ n
 
 lispTerm = lispOnearity <|> lispTwoarity <|> lispThreearity <|> lispLam <|> lispLamF <|> lispList <|> lispApp
@@ -124,3 +126,6 @@ lispLanguage = LanguageDef { commentStart="",
 		reservedNames=map fst onearity ++ map fst threearity,
 		reservedOpNames=map fst twoarity ++ ["\\", "\\r", "[]"]
 }
+
+pipeline :: String -> [LInstr Int]
+pipeline = (\(Right x) -> compile x) . parse lispParser "string"
