@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 module Lisp where
 
 import qualified Data.Map as M
@@ -8,6 +9,7 @@ data Expression = App Expression [Expression]
             | IntLit Int
             | Cons Expression Expression
             | Lam [String] Expression
+            | LamF String [String] Expression
             | Add Expression Expression
             | Sub Expression Expression
             | Mul Expression Expression
@@ -20,16 +22,19 @@ data Expression = App Expression [Expression]
             | If  Expression Expression Expression
             | Car Expression
             | Cdr Expression
+            | List [Expression]
+            | LamFApp String [String] Expression [Expression]  --only for compilation
 
+prepareRecursions :: 
 
 data LInstr a =     LDC Int      --LDC loads int constant 
                   | LD Int Int   --LD n i loads i'th value in n'th frame
                   | ADD          --int add
                   | SUB          --int sub
                   | MUL          --int mult
-                  | DIV          --int div
                   | CEQ          --equal
                   | CGT          --greater than
+                  | DIV          --int div
                   | CGTE         --greater than or equal
                   | ATOM         --checks whether top elt of the stack is int, consumes it
                   | CONS         --builds cons cell of top two elements of stack, pushes it
@@ -42,12 +47,12 @@ data LInstr a =     LDC Int      --LDC loads int constant
                   | RTN          --pop stack pointer, ret adress, env, restore stack and env, jump to ret adress.
                   | DUM Int      --creates empty env frame child with specified size, sets it as current.
                   | RAP Int     --RAP n: pop closure cell. Fill empty frame (pointed to by closure?) with n arguments from the stack. Push stack, parent of current environment, and return address. Set environment frame pointer to frame pointer from closure cell. Jump to code(closure).
-                  | STOP deriving (Show)
+                  | STOP deriving (Show, Functor)
 
 type Label = String
 
 rootlabels :: [Label]
-rootlabels = concat.(map f)$[1..] where
+rootlabels = (map('/':).concat.(map f))$[1..] where
                   f 0 = [""]
                   f n = [c:s | c <- ['a'..'z'], s <- f (n-1)]
 
@@ -66,8 +71,8 @@ floatAt :: Label -> LabelLCode -> LabelLCode
 floatAt l = M.mapKeys (\x -> if x == "" then l else x) 
            
 type Context = (M.Map String (Int,Int),Int) --how deep is each variable, and how deep are we?
-emptycontext :: Context
-emptycontext = (M.fromList [],0)
+newcontext :: Context
+newcontext = (M.fromList [("worldstate",(0,0)),("undocumented",(0,1))],0) --the two arguments of main
 
 tr :: [Label] -> Context -> Expression -> LabelLCode
 tr ls ctxt (Add e1 e2)   = (tr (split 0 ls) ctxt e2) <+> (tr (split 1 ls) ctxt e1) <+> (toCode [ADD])
@@ -95,9 +100,27 @@ tr _ _ (IntLit n) = toCode [LDC n]
 tr _ (ctxtm,lvl) (Name str) = case M.lookup str ctxtm of
                                Nothing -> error "unbound variable!"
                                Just (l,i) -> toCode [LD (lvl-l) i]
-
-
+tr _ _ (List [])            = toCode [LDC 0]
+tr ls ctxt (List exps)      = foldr1 (<+>) ((zipWith (\e i->tr (split i ls) ctxt e) exps [0..])++(replicate (length exps -1) (toCode [CONS])))
 
 transform :: Expression -> LabelLCode
-transform exp = tr rootlabels emptycontext exp
+transform exp = tr rootlabels newcontext exp
+
+
+
+
+
+
+resolveLabels :: LabelLCode -> [LInstr Int]
+resolveLabels = (\(_,subs,code) -> map (resolve (M.fromList subs)) code) . (foldl f (0,[],[])) . (M.toAscList) 
+                 where
+                  f (n,subs,code) (str,instrs) = (n+(length instrs), (str,n):subs, code++instrs)
+                  resolve subsm (SEL s1 s2) = case (M.lookup s1 subsm, M.lookup s2 subsm) of
+                                                (Just t,Just f) -> (SEL t f)
+                                                _               -> error "undefined label"
+                  resolve subsm (LDF s)     = case (M.lookup s subsm) of
+                                                (Just n)        -> (LDF n)
+                                                _               -> error "undefined label"
+                  resolve subsm x           = fmap (const 0) x
+
 
