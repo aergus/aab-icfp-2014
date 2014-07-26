@@ -45,5 +45,3 @@ data GhcState s = GS {
 	counter :: STRef s Integer,
 	terminate :: STRef s Bool
 }
-
-

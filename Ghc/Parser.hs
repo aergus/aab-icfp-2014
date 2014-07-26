@@ -11,13 +11,14 @@ import qualified Data.Map as M
 type EArg = Arg (Either String Word8)
 type EInstr = Instr EArg
 data ELine = Line {def :: [(String, Word8)], lbls :: [String], instr :: EInstr}
+	deriving (Show)
 
 reg = zip (map (:[]) ['a'..'h']++["pc"]) [A .. PC]
 
 zeroarity = [("HLT", HLT)]
 onearity  = [("INC", INC, [noPC]),
              ("DEC", DEC, [noPC]),
-	     ("INT", INT, [argument])]
+	     ("INT", INT, [ghcCon])]
 twoarity  = [("MOV", MOV, [argument, argument]),
              ("ADD", ADD, [noPC, argument]),
              ("SUB", SUB, [noPC, argument]),
@@ -26,9 +27,9 @@ twoarity  = [("MOV", MOV, [argument, argument]),
              ("AND", AND, [noPC, argument]),
              ("OR", OR, [noPC, argument]),
              ("XOR", XOR, [noPC, argument])]
-threearity= [("JLT", JLT, [argument, argument, argument]),
-             ("JEQ", JEQ, [argument, argument, argument]),
-             ("JGT", JGT, [argument, argument, argument])]
+threearity= [("JLT", JLT, [ghcCon, argument, argument]),
+             ("JEQ", JEQ, [ghcCon, argument, argument]),
+             ("JGT", JGT, [ghcCon, argument, argument])]
 
 ghcParser :: GenParser Char s [ELine]
 ghcParser = do
@@ -162,6 +163,3 @@ resolveIdentifier el = let m = M.fromList $ concat $ zipWith (\a b -> zip a (rep
 		           f (Right x) = x
 		           f (Left y)  = m M.! y
                        in map ( fmap (fmap f). instr) el
-
-pipeline :: String -> [Instruction]
-pipeline = (\(Right x) -> resolveIdentifier x) . parseGhc
