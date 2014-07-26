@@ -57,14 +57,8 @@ testcode1 = M.fromList . (zip [0..]) $ [
  AP 1,
  RTN]
 
-testcode2 :: Code
-testcode2 = M.fromList . (zip [0..]) $ [
-
-
-]
-
-main = do putStrLn$ "The first instruction is: "++ (show (testcode2 M.! 0))
-          test testcode2 startstate
+main = do putStrLn$ "The first instruction is: "++ (show (testcode1 M.! 0))
+          test testcode1 startstate
 
 
 test :: Code -> State -> IO State
