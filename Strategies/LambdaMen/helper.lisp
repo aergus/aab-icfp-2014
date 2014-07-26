@@ -31,7 +31,7 @@ _mod =
 
 ; _and :: Int -> Int -> Int
 _and =
-(\ a b -> (IF (== a 1) (IF (== b 1) 1 0) 1))
+(\ a b -> (IF (== a 1) (IF (== b 1) 1 0) 0))
 
 ; _or :: Int -> Int -> Int
 _or =
