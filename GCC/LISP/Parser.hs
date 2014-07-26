@@ -73,6 +73,7 @@ lispTerm = lispOnearity <|> lispTwoarity <|> lispThreearity <|> lispLam <|> lisp
 lispLam = do
   reservedOp lexer "\\"
   xs <- many $ identifier lexer
+  reservedOp lexer "->"
   e <- lispExpression
   return $ Lam xs e
 
@@ -80,6 +81,7 @@ lispLamF = do
   reservedOp lexer "\\r"
   f <- identifier lexer
   xs <- many $ identifier lexer
+  reservedOp lexer "->"
   e <- lispExpression
   return $ LamF f xs e
 
@@ -121,10 +123,10 @@ lispLanguage = LanguageDef { commentStart="",
 		caseSensitive=False,
 		identStart=letter,
 		identLetter=letter,
-		opStart=oneOf ":+-*/<=>\\[",
-		opLetter=oneOf "=r]",
+		opStart=oneOf ":+-*/<=>\\[-",
+		opLetter=oneOf "=r]>",
 		reservedNames=map fst onearity ++ map fst threearity,
-		reservedOpNames=map fst twoarity ++ ["\\", "\\r", "[]"]
+		reservedOpNames=map fst twoarity ++ ["\\", "\\r", "[]", "->"]
 }
 
 pipeline :: String -> [LInstr Int]
