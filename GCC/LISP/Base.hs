@@ -1,10 +1,10 @@
 {-# LANGUAGE DeriveFunctor #-}
-module Lisp where
+module GCC.LISP.Base where
 
 import qualified Data.Map as M
 import Data.List
 
-data Expression = App Expression [Expression] 
+data Expression = App Expression [Expression]
             | Name String
             | IntLit Int
             | Cons Expression Expression
