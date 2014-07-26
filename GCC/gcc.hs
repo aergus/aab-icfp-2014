@@ -98,6 +98,7 @@ execute (SEL n k) state = let newctrlstack = (TAG_JOIN ((currentinstr state)+1))
                           case pop (datastack state) of
                            (TAG_INT 0, rest) -> state {datastack=rest, currentinstr=k, ctrlstack=newctrlstack}
                            (TAG_INT _, rest) -> state {datastack=rest, currentinstr=n, ctrlstack=newctrlstack}
+                           _                 -> error "tag mismatch"
 execute JOIN     state = case pop (ctrlstack state) of
                            (TAG_JOIN n, rest) -> state {ctrlstack = rest, currentinstr = n}
                            _                  -> error "tag mismatch"
@@ -128,7 +129,8 @@ execute (RAP n)  state = case pop (datastack state) of
                                                         {envchain=(fst(envchain state),adjust (\e -> e{values=reverse val, dummy=False}) env (snd(envchain state))),
                                                         ctrlstack=(TAG_RET ((currentinstr state)+1))
                                                                   :(TAG_FRAME (parent cenv)):(ctrlstack state),
-                                                     currentinstr=k}
+                                                     currentinstr=k,
+                                                        datastack=rest'}
                                                        _          -> error "frame mismatch"  
                           _                        -> error "tag mismatch"
 execute STOP     state = state{stop=True}                                                     

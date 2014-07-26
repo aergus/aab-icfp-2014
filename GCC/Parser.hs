@@ -102,3 +102,4 @@ resolveIdentifier el = let m = M.fromList $ concat $ zipWith (\a b -> zip a (rep
 		           f (Right x) = x
 		           f (Left y)  = m M.! y
                        in map (fmap f. instr) el
+
