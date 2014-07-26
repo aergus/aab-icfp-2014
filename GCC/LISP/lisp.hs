@@ -24,7 +24,7 @@ data Expression = App Expression [Expression]
             | Cdr Expression
             | Nil Expression
             | List [Expression]
-            | LamFApp String [String] Expression [Expression]  --only for compilation
+            | LamFApp String [String] Expression [Expression]  deriving (Show)--only for compilation
 
 freeVariables :: Expression -> [String]
 freeVariables (Name s) = [s]
@@ -200,7 +200,7 @@ tr (l1:l2:ls) (ctxtm,lvl) (LamFApp f vars exp exps) =
                      False -> error "wrong number of arguments in LamFApp"
 tr _ _ (IntLit n) = toCode [LDC n]
 tr _ (ctxtm,lvl) (Name str) = case M.lookup str ctxtm of
-                               Nothing -> error "unbound variable!"
+                               Nothing -> error ("unbound variable "++ str)
                                Just (l,i) -> toCode [LD (lvl-l) i]
 tr _ _ (List [])            = toCode [LDC 0]
 tr ls ctxt (List exps)      = foldr1 (<+>) ((zipWith (\e i->tr (split i ls) ctxt e) exps [0..])++(replicate (length exps -1) (toCode [CONS])))
