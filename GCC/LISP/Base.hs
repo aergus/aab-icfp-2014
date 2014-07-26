@@ -230,13 +230,6 @@ tr ls ctxt (List exps)      = foldr1 (<+>) ((zipWith (\e i->tr (split i ls) ctxt
 tr _ _ (LamF _ _ _) = error "LamF in tr!"
 
 
-{-transform :: Expression -> LabelLCode
-transform exp = (tr rootlabels firstcontext exp) <+> (toCode [RTN])
--}
-
-
-
-
 
 resolveLabels :: LabelLCode -> [LInstr Int]
 resolveLabels = (\(_,subs,code) -> map (resolve (M.fromList subs)) code) . (foldl f (0,[],[])) . (M.toAscList) 
@@ -251,6 +244,3 @@ resolveLabels = (\(_,subs,code) -> map (resolve (M.fromList subs)) code) . (fold
                   resolve subsm x           = fmap (const 0) x
 
 
-{-
-compile :: Expression -> [LInstr Int]
-compile = resolveLabels . transform . prepare-}
