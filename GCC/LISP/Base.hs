@@ -32,7 +32,7 @@ transform (main,defs) = let l = length defs in
                          (foldr (<+>) (toCode $ [DUM l]++[LDF s | s <- labels]++[RAP l,RTN])
                           [floatAt s $ (tr (split i rest) ctxt exp)<+>(toCode [RTN])| (s,exp,i) <- zip3 labels ((map snd defs)++[main]) [1..]])
                           
-
+-- TRIPLE-CHECK LEVELS HERE! 
 
 data Expression = App Expression [Expression]
             | Name String
@@ -54,7 +54,8 @@ data Expression = App Expression [Expression]
             | Cdr Expression
             | Nil Expression
             | List [Expression]
-            | LamFApp String [String] Expression [Expression]  deriving (Show)--only for compilation
+            | LamFApp String [String] Expression [Expression]  --only for compilation
+            | Do [(String, Expression)] Expression        deriving (Show)
 
 freeVariables :: Expression -> [String]
 freeVariables (Name s) = [s]
@@ -77,9 +78,9 @@ freeVariables (Cdr e) = freeVariables e
 freeVariables (Nil e) = freeVariables e
 freeVariables (List exps) = foldr union [] (map freeVariables exps)
 freeVariables (App e exps) = foldr union (freeVariables e) (map freeVariables exps)
- 
+freeVariables (Do binds exp) = foldr (\(s,e) vs-> (vs \\ [s])`union`(freeVariables e)) (freeVariables exp) binds
 
-prepare1 :: Expression -> Expression --turn LamF into Lam when possible
+prepare1 :: Expression -> Expression --turn LamF into Lam when possible, and desugar do.
 prepare1 (LamF f args exp) = case f `elem` (freeVariables exp) of
                                         True -> LamF f args exp
                                         False-> Lam args exp
@@ -100,8 +101,22 @@ prepare1 (Lam vars e)      = Lam vars (prepare1 e)
 prepare1 (List exps)       = List (map prepare1 exps)
 prepare1 (If e1 e2 e3)     = If (prepare1 e1) (prepare1 e2) (prepare1 e3)
 prepare1 (App e exps)      = App (prepare1 e) (map prepare1 exps)
+prepare1 (Do binds exp)    = let bindblocks = sepDo [(s,prepare1 e)|(s,e)<-binds] in
+                              foldr (\binds1 exp1 -> App (Lam (map fst binds1) exp1) (map snd binds1)) (prepare1 exp) bindblocks
 prepare1 x                 = x
 
+
+splitDo :: [(String,Expression)] -> ([(String,Expression)],[(String,Expression)])
+splitDo xs = f ([],([],xs)) where
+                f (_,(ys,[]))  = (ys,[])
+                f (vs,(ys,(x:xs))) = case intersect vs (freeVariables.snd$x) of
+                                      [] -> f ((fst x):vs,(ys++[x],xs))
+                                      _  -> (ys,(x:xs))
+
+sepDo :: [(String,Expression)] -> [[(String,Expression)]] 
+sepDo [] = []
+sepDo xs = let (block,rest) = splitDo xs in
+            block:(sepDo rest)
 
 prepare2 :: Expression -> Expression --turn App (LamF f args exp) exps into LamFApp f args exp exps
 prepare2 (App (LamF f args exp) exps) = LamFApp f args (prepare2 exp) (map prepare2 exps)
