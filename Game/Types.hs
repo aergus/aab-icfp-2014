@@ -96,5 +96,6 @@ data GameState s = GS {
     frightMode :: STRef s (Maybe Integer),
     fruitState :: STRef s Bool,
     pillCount  :: STRef s Integer,
+    mapDims    :: (Integer, Integer),
     level      :: Integer
  }

@@ -19,6 +19,20 @@ runGCC = undefined
 runGHC :: GameState s -> GhostCode -> ST s (Maybe Integer)
 runGHC = undefined
 
+-- TODO: handle/correct finishing condition details
+lambdaLoop :: GameState s -> ST s (LambdaMan, Integer, Integer)
+lambdaLoop gs =
+  do gs' <- lambdaTick gs
+     pills <- readSTRef (pillCount gs)
+     m <- readArray (lambdaMen gs') LOne
+     man <- readSTRef m
+     utc <- readSTRef (ticks gs')
+     if (pills == 0 ||
+             lLives man == 0 ||
+             utc > 127 * (fst $ mapDims gs') * (snd $ mapDims gs') * 16)
+     then return (man, utc, pills)
+     else lambdaLoop gs'
+
 lambdaTick :: GameState s -> ST s (GameState s)
 lambdaTick gs =
     do utc <- readSTRef (ticks gs)
@@ -35,6 +49,7 @@ lambdaTick gs =
                                                else return Nothing
                                         return dir) (ghosts gs)
 
+       -- TODO: set agent directions
        -- HACK for going through all array members
        dummy <- mapArray (\ l -> do m <- readSTRef l
                                     dir'' <- readArray lambdaDirs (lIndex m)
@@ -61,6 +76,7 @@ lambdaTick gs =
                                                     fromJust dir'))) (ghosts gs)
 
        modifySTRef (frightMode gs) updateFrightMode
+       -- TODO: update ghosts?
 
        when (utc == 127 * 200 || utc == 127 * 400)
            (writeSTRef (fruitState gs) True)
@@ -90,6 +106,22 @@ lambdaTick gs =
                                     when (isEatable el)
                                         (do writeArray gm (lPos m) Empty
                                             modifySTRef l (lSetSpeed False))
+                                    dummy' <- mapArray (\ g ->
+                                        do m' <- readSTRef g
+                                           when (lPos m == gPos m' &&
+                                                     gVisible m')
+                                               (do f <- readSTRef
+                                                       (frightMode gs)
+                                                   if isNothing f
+                                                   then do dummy'' <- mapArray
+                                                               (\ g' ->
+                                                                modifySTRef g'
+                                                                (reset True))
+                                                               (ghosts gs)
+                                                           modifySTRef l die
+                                                   else do modifySTRef g
+                                                               (reset False)))
+                                        (ghosts gs)
                                     return ()) (lambdaMen gs)
 
        return gs
@@ -131,3 +163,12 @@ gSetSpeed v ghost = ghost { gAgent = setSpeed v (gAgent ghost) }
 
 setSpeed :: Bool -> Agent -> Agent
 setSpeed v agent = agent { fast = v }
+
+die :: LambdaMan -> LambdaMan
+die man = man { lAgent = backToStart (lAgent man), lLives = lLives man - 1 }
+
+reset :: Bool -> Ghost -> Ghost
+reset v ghost = ghost { gAgent = backToStart (gAgent ghost), gVisible = v }
+
+backToStart :: Agent -> Agent
+backToStart agent = agent { curPos = initPos agent, curDir = initDir agent }
