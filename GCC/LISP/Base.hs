@@ -11,14 +11,18 @@ type LISP = (Expression,[(String, Expression)])
 
 
 
-{-
-compile :: LISP -> LabelLCode
+
+compile :: LISP -> [LInstr Int]
 compile (main,defs) = resolveLabels . transform $ (prepare main, [(s,prepare exp) | (s,exp) <- defs])
 
+transform :: LISP -> LabelLCode
+transform (main,defs) = let l = length defs in
+                        let (labels, rest) = splitAt (l+1) rootlabels in
+                        let ctxt =( (M.fromList [(name,(1,i,True)) | ((name,_),i) <- zip defs [0..]]) `M.union` (fst firstcontext), 1) in
+                         (foldr (<+>) (toCode $ [DUM l]++[LDF s | s <- labels]++[RAP l])
+                          [floatAt s $ (tr (split i rest) ctxt exp)<+>(toCode [RTN])| (s,exp,i) <- zip3 labels ((map snd defs)++[main]) [1..]])
+                          
 
-transform :: LISP -> LInstr String
-transform (main,defs) = newcontext rootlabels
--}
 
 data Expression = App Expression [Expression]
             | Name String
@@ -179,9 +183,10 @@ toCode xs = M.fromList [("",xs)]
 floatAt :: Label -> LabelLCode -> LabelLCode
 floatAt l = M.mapKeys (\x -> if x == "" then l else x) 
            
-type Context = (M.Map String (Int,Int),Int) --how deep is each variable, and how deep are we?
-newcontext :: Context
-newcontext = (M.fromList [("worldstate",(0,0)),("undocumented",(0,1))],0) --the two arguments of main
+type Context = (M.Map String (Int,Int,Bool),Int) --how deep is each variable, IS it coded as a zero-argument function or , and how deep are we?
+
+firstcontext :: Context
+firstcontext = (M.fromList [("worldstate",(0,0,False)),("ghostcode",(0,1,False))],0) --the two arguments of main
 
 tr :: [Label] -> Context -> Expression -> LabelLCode
 tr ls ctxt (Add e1 e2)   = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [ADD])
@@ -203,12 +208,12 @@ tr (lt:lf:ls) ctxt (If e et ef) = (tr (split 0 ls) ctxt e)
                              <+> (toCode [SEL lt lf])
                              <+> (floatAt lt ((tr (split 1 ls) ctxt et) <+> (toCode [JOIN])))
                              <+> (floatAt lf ((tr (split 2 ls) ctxt ef) <+> (toCode [JOIN])))
-tr (l:ls) (ctxtm,lvl) (Lam vars exp) = let newcontext = ((M.fromList (zipWith (\var i ->(var, (lvl+1,i))) vars [0..])) `M.union` ctxtm,lvl+1) in
+tr (l:ls) (ctxtm,lvl) (Lam vars exp) = let newcontext = ((M.fromList [(var, (lvl+1,i,False))|  (var,i) <- zip vars [0..]]) `M.union` ctxtm,lvl+1) in
                                           (toCode [LDF l]) 
                                       <+> (floatAt l ( (tr ls newcontext exp)<+>(toCode [RTN])))
 tr (l1:l2:ls) (ctxtm,lvl) (LamFApp f vars exp exps) = 
                    let l=length vars in
-                   let newcontext = ((M.fromList (zipWith (\var i -> (var, (lvl+2,i))) vars [0..]) `M.union` (M.fromList[(f, (lvl+1,0))]) `M.union` ctxtm, lvl+2)) in
+                   let newcontext = ((M.fromList [(var, (lvl+2,i,False))| (var,i)<- zip vars [0..]]) `M.union` (M.fromList[(f, (lvl+1,0,False))]) `M.union` ctxtm, lvl+2) in
                     case length exps == l of
                      True -> (toCode [DUM 1, LDF l1, LDF l2, RAP 1]
                               <+> (floatAt l1 ((tr (split 0 ls) newcontext exp)<+>(toCode [RTN])))
@@ -217,18 +222,12 @@ tr (l1:l2:ls) (ctxtm,lvl) (LamFApp f vars exp exps) =
 tr _ _ (IntLit n) = toCode [LDC n]
 tr _ (ctxtm,lvl) (Name str) = case M.lookup str ctxtm of
                                Nothing -> error ("unbound variable "++ str)
-                               Just (l,i) -> toCode [LD (lvl-l) i]
+                               Just (l,i,False) -> toCode [LD (lvl-l) i]
+                               Just (l,i,True) -> toCode [LD (lvl-l) i, AP 0]
 tr _ _ (List [])            = toCode [LDC 0]
 tr ls ctxt (List exps)      = foldr1 (<+>) ((zipWith (\e i->tr (split i ls) ctxt e) (exps++[IntLit 0]) [0..])
                                          ++(replicate (length exps) (toCode[CONS])))
 tr _ _ (LamF _ _ _) = error "LamF in tr!"
-
-
-transform :: Expression -> LabelLCode
-transform exp = (tr rootlabels newcontext exp) <+> (toCode [RTN])
-
-
-
 
 
 
@@ -245,6 +244,3 @@ resolveLabels = (\(_,subs,code) -> map (resolve (M.fromList subs)) code) . (fold
                   resolve subsm x           = fmap (const 0) x
 
 
-
-compile :: Expression -> [LInstr Int]
-compile = resolveLabels . transform . prepare
