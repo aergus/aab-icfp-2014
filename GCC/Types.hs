@@ -11,12 +11,25 @@ type DataStack        = [DataValue]
 type ControlStack     = [ControlValue]
 type Code             = M.IntMap Instruction
 
+pop :: [a] -> Maybe (a,[a])
+pop (x:xs) = Just (x,xs)
+pop []     = Nothing
 
+pop2 :: [a] -> Maybe (a,a,[a])
+pop2 (x:y:xs) = Just (x,y,xs)
+pop2 _        = Nothing
 
+poplist :: Int -> [a] -> Maybe([a],[a])
+poplist n xs = case length xs < n of
+                True -> Nothing
+                False -> Just (splitAt n xs)
 
-type Instruction = LInstr Int32
+push :: a -> [a] -> [a]
+push = (:)
 
-data LInstr a =    LDC Int32      --LDC loads int constant 
+type Instruction = GccInstr Int32
+
+data GccInstr a =  LDC Int32      --LDC loads int constant 
                  | LD Int32 Int32   --LD n i loads i'th value in n'th frame
                  | ADD          --int add
                  | SUB          --int sub

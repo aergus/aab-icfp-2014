@@ -1,115 +1,103 @@
 module GCC.Step where
 import GCC.Types
-import Data.IntMap
 import Data.Int
+import GCC.EnvFrame
+import GCC.State
 
-
-pop :: [a] -> (a,[a])
-pop (x:xs) = (x,xs)
-pop []     = error "stack empty"
-
-pop2 :: [a] -> (a,a,[a])
-pop2 (x:y:xs) = (x,y,xs)
-pop2 _        = error "stack empty"
 
 
 
 
               
-type Instruction = Instr Int32
-
-getEnvironment :: EnvironmentChain -> Environment -> Int -> Environment
-getEnvironment envs e 0  = e
-getEnvironment envs e n  = getEnvironment envs ((snd envs) ! (parent e)) (n-1) 
-
-
-
-step :: Code -> State -> State
-step code state = let instr = code ! (currentinstr state) in
-                   execute instr state
-
-
-                 
-incCP :: State -> State
-incCP state = state {currentinstr = (currentinstr state) + 1}
-
-execute :: Instruction -> State -> State
-execute (LDC n)  state = incCP $ state {datastack=(TAG_INT n):(datastack state)}
-execute (LD n i) state = incCP $ let (envs,stack) = (envchain state, datastack state) in
-                                 let e = getEnvironment envs ((snd envs) ! (currentenv state)) n in
-                                               state {datastack = ((values e) !! i):stack}
-execute ADD      state = incCP $ case pop2 (datastack state) of
-                                  (TAG_INT y, TAG_INT x, rest) -> state {datastack = (TAG_INT (x+y)):rest}
-                                  _                            -> error "tag mismatch"
-execute SUB      state = incCP $ case pop2 (datastack state) of
-                                  (TAG_INT y, TAG_INT x, rest) -> state {datastack = (TAG_INT (x-y)):rest}
-                                  _                            -> error "tag mismatch"
-execute MUL      state = incCP $ case pop2 (datastack state) of
-                                  (TAG_INT y, TAG_INT x, rest) -> state {datastack = (TAG_INT (x*y)):rest}
-                                  _                            -> error "tag mismatch"
-execute DIV      state = incCP $ case pop2 (datastack state) of
-                                  (TAG_INT 0, TAG_INT _, _)    -> state
-                                  (TAG_INT y, TAG_INT x, rest) -> state {datastack = (TAG_INT (x`div`y)):rest}
-                                  _                            -> error "tag mismatch"
-execute CEQ      state = incCP $ case pop2 (datastack state) of
-                                  (TAG_INT y, TAG_INT x, rest) -> state {datastack = (TAG_INT (if x==y then 1 else 0)):rest}
-                                  _                            -> error "tag mismatch"
-execute CGT      state = incCP $ case pop2 (datastack state) of
-                                  (TAG_INT y, TAG_INT x, rest) -> state {datastack = (TAG_INT (if x>y then 1 else 0)):rest}
-                                  _                            -> error "tag mismatch"
-execute CGTE     state = incCP $ case pop2 (datastack state) of
-                                  (TAG_INT y, TAG_INT x, rest) -> state {datastack = (TAG_INT (if x>=y then 1 else 0)):rest}
-                                  _                            -> error "tag mismatch" 
-execute ATOM     state = incCP $ case pop (datastack state) of
-                                  (TAG_INT _, rest) -> state {datastack = (TAG_INT 1):rest}
-                                  (_,rest)          -> state {datastack = (TAG_INT 0):rest}
-execute CONS     state = incCP $ let (y,x,rest) = pop2 (datastack state) in
-                                  state {datastack = (TAG_CONS x y):rest}
-execute CAR      state = incCP $ case pop (datastack state) of
-                                  (TAG_CONS x y, rest) -> state {datastack = x:rest}
-                                  _                    -> error "tag mismatch"
-execute CDR      state = incCP $ case pop (datastack state) of
-                                  (TAG_CONS x y, rest) -> state {datastack = y:rest}
-                                  _                    -> error "tag mismatch"
-execute (SEL n k) state = let newctrlstack = (TAG_JOIN ((currentinstr state)+1)):(ctrlstack state) in
-                          case pop (datastack state) of
-                           (TAG_INT 0, rest) -> state {datastack=rest, currentinstr=k, ctrlstack=newctrlstack}
-                           (TAG_INT _, rest) -> state {datastack=rest, currentinstr=n, ctrlstack=newctrlstack}
-                           _                 -> error "tag mismatch"
-execute JOIN     state = case pop (ctrlstack state) of
-                           (TAG_JOIN n, rest) -> state {ctrlstack = rest, currentinstr = n}
-                           _                  -> error "tag mismatch"
-execute (LDF n)  state = incCP $ state {datastack = (TAG_CLOSURE n (currentenv state)):(datastack state)}
-execute (AP n)   state = case pop (datastack state) of
-                          (TAG_CLOSURE k env, rest)   -> let (val, rest') = splitAt n rest in
-                                                         let (newenvs, index)= addEnvironment (reverse val) n env False (envchain state) in
-                                                         state {currentenv=index, 
-                                                                  envchain=newenvs,
-                                                                 datastack=rest',
-                                                              currentinstr=k,
-                                                                 ctrlstack=(TAG_RET ((currentinstr state)+1)) 
-                                                                            :(TAG_FRAME (currentenv state)):(ctrlstack state)}
-                          _                           -> error "tag mismatch" 
-execute RTN      state = case pop (ctrlstack state) of
-                          (TAG_STOP,rest)   -> state {ctrlstack = rest, stop = True}
-                          (TAG_RET _,_)     -> case pop2 (ctrlstack state) of
-                                                (TAG_RET n, TAG_FRAME k,rest) -> state {currentinstr=n,currentenv=k,ctrlstack=rest}
-                                                _              -> error "tag mismatch"   
-                          _                 -> error "tag mismatch"
-execute (DUM n)  state = incCP $ let (newenvs,index)=addEnvironment [] n (currentenv state) True (envchain state) in
-                            state {currentenv=index,envchain = newenvs}
-execute (RAP n)  state = case pop (datastack state) of
-                          (TAG_CLOSURE k env,rest) -> let cenv = (snd (envchain state)) ! (currentenv state) in
-                                                      let (val,rest')=splitAt n rest in
-                                                      case(esize cenv == n, dummy cenv, currentenv state == env) of
-                                                       (True,True,True)-> state
-                                                        {envchain=(fst(envchain state),adjust (\e -> e{values=reverse val, dummy=False}) env (snd(envchain state))),
-                                                        ctrlstack=(TAG_RET ((currentinstr state)+1))
-                                                                  :(TAG_FRAME (parent cenv)):(ctrlstack state),
-                                                     currentinstr=k,
-                                                        datastack=rest'}
-                                                       _          -> error "frame mismatch"  
-                          _                        -> error "tag mismatch"
-execute STOP     state = state{stop=True}                                                     
-                                                        
+step :: State -> Either String State
+step state = case getInstr state of
+ (LDC n)  -> Right . incCP . (pushData (TAG_INT (fromIntegral n)))   $ state
+ (LD fr i)-> case ld fr i (envchain state) of
+                Just val    -> Right . incCP . (pushData val) $ state{envchain = insertRef val (envchain state)} 
+                Nothing     -> Left "Illegal frame"
+ (LDF f)  -> let k = current (envchain state) in 
+                 Right . incCP . (pushData (TAG_CLOSURE (fromIntegral f) k))   $ state{envchain=incref 1 (fromIntegral k) (envchain state)}
+ ADD      -> case pop2 (datastack state) of
+               Just (TAG_INT y, TAG_INT x, rest) -> Right . incCP . pushData (TAG_INT (x+y)) $ state{datastack=rest}
+               Just _                            -> Left "Tag mismatch"
+               Nothing                           -> Left "Stack empty"
+ SUB      -> case pop2 (datastack state) of
+               Just (TAG_INT y, TAG_INT x, rest) -> Right . incCP . pushData (TAG_INT (x-y)) $ state{datastack=rest}
+               Just _                            -> Left "Tag mismatch"
+               Nothing                           -> Left "Stack empty"
+ MUL      -> case pop2 (datastack state) of
+               Just (TAG_INT y, TAG_INT x, rest) -> Right . incCP . pushData (TAG_INT (x*y)) $ state{datastack=rest}
+               Just _                            -> Left "Tag mismatch"
+               Nothing                           -> Left "Stack empty"
+ DIV      -> case pop2 (datastack state) of
+               Just (TAG_INT 0, TAG_INT x, rest) -> Right . incCP                            $ state{datastack=rest}
+               Just (TAG_INT y, TAG_INT x, rest) -> Right . incCP . pushData (TAG_INT (x `div` y)) $ state{datastack=rest}
+               Just _                            -> Left "Tag mismatch"
+               Nothing                           -> Left "Stack empty"
+ CEQ      -> case pop2 (datastack state) of
+               Just (TAG_INT y, TAG_INT x, rest) -> Right . incCP . pushData (TAG_INT (if x==y then 1 else 0)) $ state{datastack=rest}
+               Just _                            -> Left "Tag mismatch"
+               Nothing                           -> Left "Stack empty"
+ CGT      -> case pop2 (datastack state) of
+               Just (TAG_INT y, TAG_INT x, rest) -> Right . incCP . pushData (TAG_INT (if x>y  then 1 else 0)) $ state{datastack=rest}
+               Just _                            -> Left "Tag mismatch"
+               Nothing                           -> Left "Stack empty"
+ CGTE     -> case pop2 (datastack state) of
+               Just (TAG_INT y, TAG_INT x, rest) -> Right . incCP . pushData (TAG_INT (if x>=y then 1 else 0)) $ state{datastack=rest}
+               Just _                            -> Left "Tag mismatch"
+               Nothing                           -> Left "Stack empty"
+ CONS     -> case pop2 (datastack state) of
+               Just (y,x,rest)                   -> Right . incCP . pushData (TAG_CONS x y) $ state{datastack=rest}
+               Nothing                           -> Left "Stack empty"
+ CAR      -> case pop (datastack state) of
+               Just (TAG_CONS x y,rest)          -> Right . incCP . pushData x 
+                                                      $ state{datastack=rest,envchain = forgetRef y (envchain state)}
+               Just _                            -> Left "Tag mismatch"
+               Nothing                           -> Left "Stack empty"
+ CDR      -> case pop (datastack state) of
+               Just (TAG_CONS x y,rest)          -> Right . incCP . pushData y 
+                                                      $ state{datastack=rest,envchain = forgetRef x (envchain state)}
+               Just _                            -> Left "Tag mismatch"
+               Nothing                           -> Left "Stack empty"
+ ATOM     -> case pop (datastack state) of
+               Just (TAG_INT _,rest)                     -> Right . incCP . pushData (TAG_INT 1) 
+                                                                           $ state{datastack=rest}
+               Just (x,rest)                     -> Right . incCP . pushData (TAG_INT 0)
+                                                                           $ state{datastack=rest, envchain=forgetRef x (envchain state)} 
+               _                                 -> Left "Stack empty"
+ (DUM l)  -> Right . incCP $ state{envchain = newframe l (envchain state)}
+ (AP l)   -> case poplist (fromIntegral (l+1)) (datastack state) of
+               Just ((TAG_CLOSURE f k):xs,rest)  -> let env' = newframeWith (reverse xs) (setEnv k (envchain state)) in
+                                                    let old = current.envchain$ state in
+                                                        Right . (goto (fromIntegral f)) .
+                                                        (pushCtrl (TAG_RET ((+1).cp.codemap$ state))). 
+                                                        (pushCtrl (TAG_FRAME old))
+                                                        $ state{envchain = ((incref 1 old).(incref (-1) (fromIntegral k))$ env'), datastack = rest}
+               Just _                            -> Left "Tag mismatch"
+               Nothing                           -> Left "Stack empty"
+ (RAP l)   -> case poplist (fromIntegral (l+1)) (datastack state) of
+               Just ((TAG_CLOSURE f k):xs,rest)  -> if rapFault k l state then Left "Frame mismatch" else 
+                                                    let env' = fillframeWith (reverse xs) (envchain state) in
+                                                    let oldparent = parent.currentFrame.envchain$ state in
+                                                        Right . (goto (fromIntegral f)) .
+                                                        (pushCtrl (TAG_RET ((+1).cp.codemap$ state))). 
+                                                        (pushCtrl (TAG_FRAME oldparent))
+                                                        $ state{envchain = ((incref 1 oldparent).(incref (-1) (fromIntegral k))$ env'), datastack = rest}
+               Just _                            -> Left "Tag mismatch"
+               Nothing                           -> Left "Stack empty"
+ RTN       -> case pop2 (ctrlstack state) of
+               Just (TAG_RET addr,TAG_FRAME k,rest) -> Right . (goto (fromIntegral addr)) $ state{envchain = (incref (-1) (fromIntegral k)).(setEnv (fromIntegral k)) $ (envchain state)}
+               Just _                               -> Left "Tag mismatch"
+               Nothing                              -> Left "Stack empty"
+ (SEL t f) -> case pop (datastack state) of
+               Just (TAG_INT n,rest)      -> case n of
+                                               0 -> Right . (goto (fromIntegral f)) . (pushCtrl (TAG_JOIN ((+1).cp.codemap$ state))) $ state{datastack=rest} 
+                                               _ -> Right . (goto (fromIntegral t)) . (pushCtrl (TAG_JOIN ((+1).cp.codemap$ state))) $ state{datastack=rest}
+               Just _                            -> Left "Tag mismatch"
+               Nothing                           -> Left "Stack empty"
+ JOIN      -> case pop (ctrlstack state) of
+               Just (TAG_JOIN addr,rest)         -> Right . (goto (fromIntegral addr)) $ state{ctrlstack=rest}
+               Just _                            -> Left "Tag mismatch"
+               Nothing                           -> Left "Stack empty"
+ STOP      ->  Right $ halt state              
 
