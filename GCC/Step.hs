@@ -3,24 +3,6 @@ import GCC.Types
 import Data.IntMap
 import Data.Int
 
- --TAG_INT, TAG_CONS, TAG_JOIN, TAG_CLOSURE
-data DataValue    = TAG_INT Int | TAG_CONS DataValue DataValue | TAG_CLOSURE Int Int
-data ControlValue = TAG_JOIN Int| TAG_RET Int| TAG_FRAME Int| TAG_STOP
-     
-type DataStack        = [DataValue]
-type ControlStack     = [ControlValue]
-type EnvironmentChain = ([Int],IntMap Environment)
-data Environment      = Environment {values :: [DataValue],
-                                      esize :: Int,
-                                      dummy :: Bool,
-                                     parent :: Key}
-type Code             = IntMap Instruction
-data State = State {datastack    :: DataStack,
-                    ctrlstack    :: ControlStack,
-                    envchain     :: EnvironmentChain,
-                    currentinstr :: Int,
-                    currentenv   :: Key,
-                          stop   :: Bool}
 
 pop :: [a] -> (a,[a])
 pop (x:xs) = (x,xs)
@@ -30,16 +12,11 @@ pop2 :: [a] -> (a,a,[a])
 pop2 (x:y:xs) = (x,y,xs)
 pop2 _        = error "stack empty"
 
-newEnvironmentChain :: EnvironmentChain
-newEnvironmentChain = ([1..],fromList [(0,Environment [] 0 False (error "root has no parent"))])
-
-addEnvironment :: [DataValue] -> Int -> Key -> Bool -> EnvironmentChain -> (EnvironmentChain,Int)
-addEnvironment vs n parent dum ((x:xs),intmap) = ((xs,insert x (Environment vs n dum parent) intmap),x)
 
 
 
               
-type Instruction = Instr Int
+type Instruction = Instr Int32
 
 getEnvironment :: EnvironmentChain -> Environment -> Int -> Environment
 getEnvironment envs e 0  = e
