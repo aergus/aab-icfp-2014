@@ -10,9 +10,10 @@ import Data.Array.ST
 import Data.STRef
 import Data.Array.MArray
 import Data.Array.Unboxed
+import Text.Parsec.Pos
 
 data Register = A | B | C | D | E | F | G | H | PC
-	deriving (Read, Show, Enum, Eq, Ord, Ix)
+	deriving (Read, Show, Enum, Bounded, Eq, Ord, Ix)
 
 data Arg a = RegArg Register | IRegArg Register | Const a | Memory a
 	deriving (Eq, Read, Show, Functor)
@@ -38,6 +39,8 @@ data Instr a = MOV {dest :: a, src :: a}
 
 type Instruction = Instr Argument
 
+data ParseResult = ParseResult { instrs :: [Instruction], enums :: [(String, Word8)], positions :: [SourcePos] }
+
 data GhcState s = GS {
 	registers :: STUArray s Register Word8,
 	code :: Array Word8 Instruction,
@@ -55,4 +58,4 @@ data GhostWorldView = WS {
         ghostCurCoordinates :: Array Word8 (Word8, Word8),
         ghostVitDir :: Array Word8 (Word8,Word8),
         gameMap :: Array (Word8,Word8) Word8
-}
+} deriving Show

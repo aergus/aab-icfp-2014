@@ -1,0 +1,87 @@
+; Check if a cell is a crossing/deadend
+; IN:
+;  Register A: x-ordinate
+;  Register B: y-ordinate
+;  Register C: direction
+; Out:
+;  Register C: new direction (if unique otherwise unspecified)
+;  Register E: number of neighbours 
+;  F (old x-ordinate)
+;  B -> B - 1
+DEF UP 0
+DEF RIGHT 1
+DEF DOWN 2
+DEF LEFT 3
+init:
+        add a,1
+        add b,1
+        add c,1
+next_crossing:
+crossing:
+        xor c,2
+        int 8
+; Save x-ordinate
+        mov f,a
+        mov e,0
+        inc a; go right
+        int 7
+        jeq crossing_left, 0, a
+        inc e
+        xor c,RIGHT
+crossing_left:
+        mov a,f
+        dec a; go left
+        int 7
+        jeq crossing_up, 0, a
+        inc e
+        xor c,LEFT
+crossing_up:
+        mov a,f
+        dec b ; go up
+        int 7
+        jeq crossing_down, 0, a
+        inc e
+        ; xor c,UP ; is a nop since up is 0
+crossing_down:
+        mov a,f
+        add b,2; go down
+        int 7
+        jeq crossing_return, 0, a
+        inc e
+        xor c, DOWN;
+; Next crossing in at a cell in a given direction
+; IN:
+;   Register A: x-ordinate
+;   Register B: y-ordinate
+;   Register C: direction
+; Out:
+;   Register A: x-ordinate of next crossing
+;   Register B: y-ordinate of next crossing
+;   Register C: looking direction
+;   Register D: (incremented) distance
+; USES:
+; 
+crossing_return:
+        jeq nextcrossing_fin, 0, e
+        inc d
+        mov a,f
+        int 8
+        jeq crossing, c, DOWN
+        jeq next_up, c, UP
+        dec b
+        int 8
+        jeq next_right, c, RIGHT
+        dec a
+        int 8
+        mov pc, crossing
+next_right:
+        inc a
+        int 8
+        mov pc, crossing 
+next_up:
+        sub b,2;
+        int 8
+        mov pc, crossing
+nextcrossing_fin:
+        int 8
+        hlt

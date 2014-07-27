@@ -4,13 +4,14 @@ import Ghc.Types
 
 import Text.Parsec.Token
 import Text.ParserCombinators.Parsec
+import Text.Parsec.Pos
 import Control.Monad
 import Data.Word
 import qualified Data.Map as M
 
 type EArg = Arg (Either String Word8)
 type EInstr = Instr EArg
-data ELine = Line {def :: [(String, Word8)], defEnum :: [String], lbls :: [String], instr :: EInstr}
+data ELine = Line {def :: [(String, Word8)], defEnum :: [String], lbls :: [String], instr :: EInstr, pos :: SourcePos}
         deriving (Show)
 
 reg = zip (map (:[]) ['a'..'h']++["pc"]) [A .. PC]
@@ -87,9 +88,9 @@ ghcLine = do
   defs <- many ghcDef
   defEnums <- many ghcDefEnum
   lbls <- many $ try ghcLabel
-
+  p <- getPosition
   instr <- ghcInstruction
-  return $Line defs defEnums lbls instr
+  return $Line defs defEnums lbls instr p
 
 ghcDef :: GenParser Char s (String, Word8) 
 ghcDef = do
@@ -170,11 +171,11 @@ parseGhc :: String -> Either (ParseError) [ELine]
 parseGhc = parse ghcParser "unknown"
 
 --TODO: REWRITE
-resolveIdentifier :: [ELine] -> [Instruction]
+resolveIdentifier :: [ELine] -> ParseResult
 resolveIdentifier el = let m1 = concat (zipWith (\a b -> zip a (repeat b)) (map lbls el) [0..])
                            m2 = concat $ map def el
                            m3 = zip (concat $ map defEnum el) [255,254..0]
                            m =M.fromList $ m1 ++ m2 ++ m3
                            f (Right x) = x
                            f (Left y)  = m M.! y
-                       in map ( fmap (fmap f). instr) el
+                       in ParseResult (map ( fmap (fmap f). instr) el) m3 (map pos el)
