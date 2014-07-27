@@ -1,5 +1,6 @@
 ; check if lambdaman is at a crossing
 DEF his_start 128
+DEF his_end 191 ; 128 + 63 works fine with and (for larger numbers)
 DEFENUM his_cur
 DEFENUM not_init
 DEFENUM his_dir
@@ -15,10 +16,10 @@ history:
         mov pc,neighbours
 history_return:
         ; check if it is a crossing
-        jlt hand, [neighbours_out],3
+        jlt follow, [neighbours_out],3
         ; It is a crossing
         ; check if it is the same as the last one
-        mov a,[neighbours_rt]
+        mov a,[his_cur]
         sub a,2
         jeq history_x, [a],[neighbours_in_x]
         mov pc, history_new
@@ -26,13 +27,14 @@ history_x:
         inc a
         jeq history_dup, [a],[neighbours_in_y]
 history_new:
-        mov [his_cur], [neighbours_in_x]
-        inc [his_cur]
-        mov [his_cur], [neighbours_in_y]
-        inc [his_cur]
+        mov e,[his_cur]
+        mov [e], [neighbours_in_x]
+        inc e
+        mov [e], [neighbours_in_y]
+        add [his_cur],2
 history_wantdir:
         mov [his_dir],1
-        mov pc,hand
+        mov pc,follow
 
 history_dup:
         ; update only direction
@@ -40,7 +42,60 @@ history_dup:
         mov pc,history_wantdir 
          
 history_dir:
-return:
+        ; assume that he moved
+        mov d,[his_cur]
+        dec d
+        mov c,d
+        dec c
+        int 1
+        mov [compare_rt], history_dir_return
+        mov pc,comparecoordinates
+history_dir_return:
+        mov e, [his_cur]
+        mov [e], [compare_out_major]
+        add [his_cur], 2
+        and [his_cur], his_end 
+        mov [his_dir], 0
+         
+follow:
+        ; get our coordinates in a and b
+        int 3
+        int 5
+        mov c, [his_cur]
+        mov d, c
+        add d, 1
+follow_loop:
+        jeq follow_x, [c],a
+        mov pc, follow_cont
+follow_x:
+        jeq follow_break, [d],b
+follow_cont:
+        add c, 4
+        and c, his_end
+        add d, 4
+        and d, his_end
+        jeq move, [his_cur],c
+        mov pc, follow_loop
+follow_break:
+        add d,1 
+        mov a,d
+        int 0
+        hlt
+
+; move to lambda
+move:
+        int 3
+        int 5
+        mov [neighbours_in_x], a
+        mov [neighbours_in_y], b
+        mov c,neighbours_in_x
+        mov d,neighbours_in_y
+        int 1
+        mov [compare_rt], move_return
+        mov pc,comparecoordinates
+move_return:
+        mov a,[compare_out_major]
+        int 0
         hlt
 
 ; hand rule
@@ -149,31 +204,49 @@ offleft:
 offend:
         hlt
 
+DEFEnum compare_x_val
+DEFEnum compare_x_dir ; is set to 1 (right) if a >= [c] and 3 (left)
+                      ; otherwise
+DEFEnum compare_y_val ; is set to 2 (down) if b >= [d] and 0 (up) o/w
+DEFEnum compare_y_dir
+DEFEnum compare_out_major ; dominant direction
+DEFEnum compare_out_minor ; minor direction
+
+
+; compares (a,b) and ([c],[d])
+; (a, b) is often set via interrupts
+; saves the result in compare_out
+; jumps to
+DEFEnum compare_rt
+; modifies only private stuff
 comparecoordinates:
-        mov c,a
-        mov d,b
-        ; Get lambda-man's coordinates
         ; Which difference is bigger?
-        mov e,a
-        sub e,c
-        mul e,e ; e = dx^2
-        mov f,b
-        sub f,d
-        mul f,f ; f = dy^2
-        JLT ydiv,e,f
-xdiv:
-        JGT right, a,c
-left:
-        mov a,3
-        mov pc,return
-right:
-        mov a,1
-        mov pc,return
-ydiv:
-        JGT down, b,d
-up:
-        mov a,0
-        mov pc,return
-down:
-        mov a,2
-        mov pc,return
+        mov [compare_x_val],a
+        sub [compare_x_val],[c]
+        mov [compare_y_val],b
+        sub [compare_y_val],[d]
+        jlt compare_left, a,[c] ; then a - [c] is negative
+compare_right:
+        mov [compare_x_dir],1
+        mov pc, compare_y
+compare_left:
+        mul [compare_x_val],255
+        mov [compare_x_dir],3
+compare_y:
+        jlt compare_up, b,[d]
+compare_down:
+        mov [compare_y_dir],2
+        mov pc, compare_xy
+compare_up:
+        mul [compare_y_val],255
+        mov [compare_y_dir],0
+compare_xy:
+        jgt compare_xdom, [compare_x_val],[compare_y_val]
+compare_ydom:
+        mov [compare_out_major], [compare_y_dir]
+        mov [compare_out_minor], [compare_x_dir]
+        mov pc, [compare_rt]
+compare_xdom:
+        mov [compare_out_major], [compare_x_dir]
+        mov [compare_out_minor], [compare_y_dir]
+        mov pc, [compare_rt]
