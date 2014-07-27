@@ -7,24 +7,27 @@ import Data.STRef
 import Control.Monad.ST
 import Data.Array
 import Data.Array.ST
+import Data.List
 
-import Ghc.DummyWorld
+import Text.Parsec.Pos
+
+import Ghc.Test
 import Data.Word
 
 pipeline :: String -> String
-pipeline = prettyProgram. fst . (\(Right x) -> resolveIdentifier x) . parseGhc
+pipeline = prettyProgram. instrs . (\(Right x) -> resolveIdentifier x) . parseGhc
 
 compileFromFile :: String -> IO ()
 compileFromFile f = do
         x <- readFile f
-        either print (putStr . prettyProgram.fst.resolveIdentifier) (parseGhc x)
+        either print (putStr . prettyProgram. instrs .resolveIdentifier) (parseGhc x)
 
 debugFromFile :: String -> IO ()
 debugFromFile f = do
         x <- readFile f
         case parseGhc x of
                 Left err -> print err
-                Right x -> (uncurry debug) $ resolveIdentifier x
+                Right y -> debug x $ resolveIdentifier y
 
 generateState :: [Instruction] -> ST s (GhcState s)
 generateState c = do
@@ -46,23 +49,30 @@ prettyPrintRegisters r = do
         values <- mapM (readArray r) [A .. PC]
         return $ show $ zip [A .. PC] values
 
-prettyPrintState :: GhcState s -> [(String, Word8)] -> ST s String
-prettyPrintState state enums = do
+context :: String -> GhcState s -> ParseResult -> ST s [String]
+context source state pr = do
+        pc <- fmap( fromInteger . toInteger) $ readArray (registers state) PC
+        let line = sourceLine (positions pr !! pc)
+        return $ take 10 $ drop (line - 4) $lines source 
+
+prettyPrintState :: String -> GhcState s -> ParseResult -> ST s String
+prettyPrintState source state pr = do
         cnt <- readSTRef (counter state)
         ar <- prettyPrintRegisters (registers state)
-        pEnum <- mapM (prettyPrintEnum state) enums
-        return $ concat $ [show cnt, show ar] ++ pEnum
+        pEnum <- mapM (prettyPrintEnum state) (enums pr)
+        ctxt <- context source state pr
+        return $ intercalate "\n" $ [show ar] ++ pEnum ++ ctxt ++ [show cnt]
 
-debug :: [Instruction] -> [(String, Word8)] -> IO ()
-debug code enums = do
-        state <- stToIO $ generateState code
-        debugLoop state enums
+debug :: String -> ParseResult -> IO ()
+debug source pr = do
+        state <- stToIO $ generateState $ instrs $ pr
+        debugLoop source state pr
 
-debugLoop state enums = do
+debugLoop source state pr = do
         term <- stToIO $ readSTRef (terminate state)
-        output <- stToIO $ prettyPrintState state enums
+        output <- stToIO $ prettyPrintState source state pr
         putStrLn output
         getLine
         unless term $ do
-               stToIO $ step dummy state
-               debugLoop state enums 
+               stToIO $ step testWorld state
+               debugLoop source state pr 

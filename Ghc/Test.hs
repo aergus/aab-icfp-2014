@@ -67,5 +67,5 @@ fromElement GhostStart     = 6
 mapSearch :: (Eq a, Num b) => a -> [[a]] -> [(a, (b, b))]
 mapSearch t ts = filter ((== t) . fst)
     [((ts !! (snd r)) !! (fst r),
-         (fromIntegral $ snd r, fromIntegral $ fst r)) |
+         (fromIntegral $ fst r, fromIntegral $ snd r)) |
          r <- range ((0, 0), (length (head ts) - 1, length ts - 1))]

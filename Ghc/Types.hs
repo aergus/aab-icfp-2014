@@ -10,6 +10,7 @@ import Data.Array.ST
 import Data.STRef
 import Data.Array.MArray
 import Data.Array.Unboxed
+import Text.Parsec.Pos
 
 data Register = A | B | C | D | E | F | G | H | PC
 	deriving (Read, Show, Enum, Bounded, Eq, Ord, Ix)
@@ -37,6 +38,8 @@ data Instr a = MOV {dest :: a, src :: a}
 	deriving (Eq, Read, Show, Functor)
 
 type Instruction = Instr Argument
+
+data ParseResult = ParseResult { instrs :: [Instruction], enums :: [(String, Word8)], positions :: [SourcePos] }
 
 data GhcState s = GS {
 	registers :: STUArray s Register Word8,
