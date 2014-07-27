@@ -65,7 +65,7 @@ argident = do
 	return $ Left ident
 
 argconst = do
-	co <- decimal lexer
+	co <- integer lexer
 	return $ Right $ fromInteger co
 
 gccZeroarity = choice $ map (\ (x, y) -> reserved lexer x >> (return) y) zeroarity
