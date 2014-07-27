@@ -1,18 +1,18 @@
 {- LambdaMan game map parser -}
 
-module Parser where
+module Game.Parser where
 
-import Game.Types
+import Game.Types (GameMap (..), Element (..))
 
 import Text.ParserCombinators.Parsec
 
-rawGameMap :: GenParser Char st GameMap
-rawGameMap =
-    do result <- many rawGameMapLine
+gameMap :: GenParser Char st GameMap
+gameMap =
+    do result <- many gameMapLine
        return (GM result)
 
-rawGameMapLine :: GenParser Char st [Element]
-rawGameMapLine =
+gameMapLine :: GenParser Char st [Element]
+gameMapLine =
     do result <- many element
        char '\n'
        return result
@@ -26,11 +26,11 @@ element =
                  '.'  -> Pill
                  'o'  -> PowerPill
                  '%'  -> Fruit
-                 '\\' -> LambdaMan undefined
-                 '='  -> Ghost undefined)
+                 '\\' -> LambdaManStart
+                 '='  -> GhostStart)
 
 elementChar :: GenParser Char st Char
 elementChar = oneOf " #.o%\\="
 
-parseRawGameMap :: String -> Either ParseError GameMap
-parseRawGameMap input = parse rawGameMap "(unknown)" input
+parseGameMap :: String -> Either ParseError GameMap
+parseGameMap input = parse gameMap "(unknown)" input
