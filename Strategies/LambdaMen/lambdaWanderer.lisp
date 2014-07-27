@@ -1,4 +1,4 @@
-; Never do the same thing for a third time!
+-- Never do the same thing for a third time!
 main =
 (: 0
    (\ ai world ->
@@ -40,19 +40,19 @@ main =
    )
 )
 
-; _myDir :: WorldState -> Int
+-- _myDir :: WorldState -> Int
 _myDir =
 (\ world ->
   (CAR (CDR (CDR (CAR (CDR world)))))
 )
 
-; _myPos :: WorldState -> (Int, Int)
+-- _myPos :: WorldState -> (Int, Int)
 _myPos =
 (\ world ->
   (CAR (CDR (CAR (CDR world))))
 )
 
-; _applyDir :: (Int, Int) -> Int -> (Int, Int)
+-- _applyDir :: (Int, Int) -> Int -> (Int, Int)
 _applyDir =
 (\ pos dir ->
    (IF (== dir 0)
@@ -67,22 +67,22 @@ _applyDir =
    )
 )
 
-; accList :: [a] -> Int -> a
+-- accList :: [a] -> Int -> a
 _accList =
 (\r accList x l -> (IF (== l 0) (CAR x) (accList (CDR x) (- l 1))))
 
-; _mod :: Int -> Int -> Int
+-- _mod :: Int -> Int -> Int
 _mod =
 (\ n m -> (- n (* m (/ n m))))
 
-; _and :: Int -> Int -> Int
+-- _and :: Int -> Int -> Int
 _and =
 (\ a b -> (IF (== a 0) 0 (IF (== b 0) 0 1)))
 
-; _or :: Int -> Int -> Int
+-- _or :: Int -> Int -> Int
 _or =
 (\ a b -> (IF (== a 0) (IF (== b 0) 0 1) 1))
 
-; _not :: Int -> Int
+-- _not :: Int -> Int
 _not =
 (\ a -> (IF (== a 0) 1 0))
