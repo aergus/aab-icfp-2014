@@ -1,0 +1,109 @@
+; corridor
+DEFENUM corridor_in_x
+DEFENUM corridor_in_y
+; in ([corridor_in_x], [corridor_in_y]) coordinate pair
+; in d direction
+
+; out ([neighbours_in_x], [neighbours_in_y]) end of cooridor
+; d direction
+; out [corridor_out] distance
+DEFENUM corridor_out
+mov [corridor_in_x],1
+mov [corridor_in_y],1
+mov d,0
+corridor:
+        ; initialize variables
+        mov [neighbours_in_x], [corridor_in_x]
+        mov [neighbours_in_y], [corridor_in_y]
+        mov [corridor_out], 0 ; initialize distance
+corridor_return_off:
+        mov pc, neighbours ; jump to neighbours
+corridor_return:
+        ; if we are now in a crossing finish
+        jgt corridor_end, [neighbours_out], 0
+        ; otherwise move cell
+        inc [corridor_out]
+        ; d got xored with the direction of every neighbour
+        ; we assume that we came from rev d
+        ; now rev d = xor d 2
+        ; so if we xor with 2, we get the new direction?
+        xor d,2
+        ; prepare offset
+        mov e, neighbours_in_x
+        mov f, neighbours_in_y
+        mov c, d
+        mov h, corridor_return_off
+        mov pc, offset
+corridor_end:
+        ; print stuff
+        mov a,[neighbours_in_x]
+        mov b,[neighbours_in_y]
+        mov g, [corridor_out]
+        int 8
+        hlt
+
+; number of neighbours with lots of side effects
+; in ([neighbours_in_x], [neighbours_in_y]) coordinate pair
+; doesn't change neighbours_in_x and neighbours_in_y
+DEFENUM neighbours_in_x
+DEFENUM neighbours_in_y
+;uses
+; a b c e f 
+DEFENUM neighbours_x
+DEFENUM neighbours_y
+DEFENUM neighbours_counter ; as a counter
+; out 
+DEFENUM neighbours_out ; number of neighbours - 2 so it is not a
+; corridor iff > 0
+; xors d with direction of every neighbour
+
+neighbours:
+        ; set e f h for offset
+        mov e,neighbours_x
+        mov f,neighbours_y
+        mov h,neighbours_offreturn
+        mov c,offup
+        mov [neighbours_counter],255
+        mov [neighbours_out],254
+neighbours_loop:
+        inc [neighbours_counter]
+        mov [neighbours_x],[neighbours_in_x]
+        mov [neighbours_y],[neighbours_in_y]
+        mov pc,c
+neighbours_offreturn:
+        add c,2
+        mov a,[neighbours_x]
+        mov b,[neighbours_y]
+        int 7
+        jeq neighbours_end, 0, a
+        xor d,[neighbours_counter]
+        inc [neighbours_out]
+neighbours_end:
+        jlt neighbours_loop, [neighbours_counter], 3
+        int 8
+        mov pc,corridor_return
+; offset
+; in c direction
+;    h return
+; out add to [e] and [f] offset 
+; keeps e,f,h const
+; tains c
+
+offset:
+mul c,2
+add c,offup
+mov pc,c
+offup:
+        dec [f] ; go up
+        mov pc,h
+offright:
+        inc [e] ; go right
+        mov pc,h
+offdown:
+        inc [f] ; go down
+        mov pc,h
+offleft:
+        dec [e] ; go left
+        mov pc,h
+offend:
+        hlt
