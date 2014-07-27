@@ -5,14 +5,14 @@ import GCC.Types
 import GCC.EnvFrame
 import qualified Data.IntMap as M
 
-data CodeMap = CodeMap {code :: M.IntMap (GccInstr Int32), stop :: Bool, cp :: Key}
+data CodeMap = CodeMap {code :: M.IntMap (GccInstr Int32), stop :: Bool, cp :: Key} deriving (Show)
 
 
 
 data State = State {datastack    :: DataStack,
                     ctrlstack    :: ControlStack,
                     codemap      :: CodeMap,
-                    envchain     :: EnvChain}
+                    envchain     :: EnvChain} deriving (Show)
 
 
 halt :: State -> State

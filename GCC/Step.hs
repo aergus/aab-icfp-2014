@@ -8,6 +8,14 @@ import GCC.State
 
 
 
+
+
+
+
+
+
+
+
               
 step :: State -> Either String State
 step state = case getInstr state of
@@ -85,10 +93,14 @@ step state = case getInstr state of
                                                         $ state{envchain = ((incref 1 oldparent).(incref (-1) (fromIntegral k))$ env'), datastack = rest}
                Just _                            -> Left "Tag mismatch"
                Nothing                           -> Left "Stack empty"
- RTN       -> case pop2 (ctrlstack state) of
-               Just (TAG_RET addr,TAG_FRAME k,rest) -> Right . (goto (fromIntegral addr)) $ state{envchain = (incref (-1) (fromIntegral k)).(setEnv (fromIntegral k)) $ (envchain state)}
-               Just _                               -> Left "Tag mismatch"
-               Nothing                              -> Left "Stack empty"
+ RTN       -> case pop (ctrlstack state) of
+               Just (TAG_STOP,_) -> Right. halt $ state
+               _ -> case pop2 (ctrlstack state) of
+                     Just (TAG_RET addr,TAG_FRAME k,rest) -> Right . (goto (fromIntegral addr)) $ 
+                                                                        state{envchain = (incref (-1) (fromIntegral k)).
+                                                                              (setEnv (fromIntegral k)) $ (envchain state)}
+                     Just _                               -> Left "Tag mismatch"
+                     Nothing                              -> Left "Stack empty"
  (SEL t f) -> case pop (datastack state) of
                Just (TAG_INT n,rest)      -> case n of
                                                0 -> Right . (goto (fromIntegral f)) . (pushCtrl (TAG_JOIN ((+1).cp.codemap$ state))) $ state{datastack=rest} 

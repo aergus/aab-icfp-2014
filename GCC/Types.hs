@@ -4,8 +4,8 @@ module GCC.Types where
 import qualified Data.IntMap as M
 import Data.Int
 
-data DataValue    = TAG_INT Int | TAG_CONS DataValue DataValue | TAG_CLOSURE Int Int
-data ControlValue = TAG_JOIN Int| TAG_RET Int| TAG_FRAME Int| TAG_STOP
+data DataValue    = TAG_INT Int | TAG_CONS DataValue DataValue | TAG_CLOSURE Int Int deriving (Show)
+data ControlValue = TAG_JOIN Int| TAG_RET Int| TAG_FRAME Int| TAG_STOP deriving (Show)
      
 type DataStack        = [DataValue]
 type ControlStack     = [ControlValue]

@@ -9,7 +9,7 @@ data EnvFrame      = EnvFrame {values :: [DataValue],
                                       size :: Int,
                                       dummy :: Bool,
                                      parent :: Key,
-                                        refs :: Int}
+                                        refs :: Int} deriving (Show)
 
 
 type Key = Int
@@ -17,7 +17,10 @@ type Key = Int
 
 data EnvChain = EnvChain {freeKeys :: [Key],
                          envframes :: M.IntMap EnvFrame,
-                           current :: Key}  
+                           current :: Key}
+
+instance Show EnvChain where
+ show (EnvChain{envframes = xs, current = k}) = "EnvChain {envframes = "++(show xs)++", current = "++(show k)++"}"
                           
                             
 currentFrame :: EnvChain -> EnvFrame
