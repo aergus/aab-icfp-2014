@@ -25,6 +25,25 @@ _filter =
 _elem =
 (\ x xs -> (IF (NIL xs) 0 (IF (== x (CAR xs)) 1 (_elem x (CDR xs)))))
 
+
+; _dist :: Int -> Int -> Int -> Int -> Int
+_dist =
+(\ x y v w ->
+   (_max (_absDiff x v) (_absDiff y w))
+)
+
+; _absDiff :: Int -> Int -> Int
+_absDiff =
+(\ x y ->
+  (_max (- x y) (- y x))
+)
+
+; _max :: Int -> Int -> Int
+_max =
+(\ x y ->
+  (IF (< y x) x y)
+)
+
 ; _mod :: Int -> Int -> Int
 _mod =
 (\ n m -> (- n (* m (/ n m))))
