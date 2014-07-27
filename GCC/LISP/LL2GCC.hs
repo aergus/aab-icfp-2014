@@ -12,7 +12,7 @@ ll2gcc = do args <- getArgs
             lispCode <- readFile (args !! 0)
             either
                 (\x -> putStrLn $ "ERROR: " ++ show x)
-                (\x -> mapM_ putStrLn $ map show (compile x))
+                (\x -> mapM_ putStrLn $ map printLInstr (compile x))
                 (parseLisp lispCode)
 
 
