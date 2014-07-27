@@ -18,6 +18,7 @@ instance Show GameMap where
 
 data Element =
     Empty | Wall | Pill | PowerPill | Fruit | LambdaManStart | GhostStart
+    deriving Eq
 
 instance Show Element where
     show Empty          = " "
@@ -117,5 +118,6 @@ data GameState s = GS {
     fruitState :: STRef s Bool,
     fruitPos   :: (GInt, GInt),
     mapDims    :: (GInt, GInt),
-    level      :: Word8
+    level      :: Word8,
+    end        :: Tick
  }
