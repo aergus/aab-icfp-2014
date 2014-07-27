@@ -10,12 +10,21 @@ import Data.STRef
 import Data.Array.MArray
 import Data.Array.Unboxed
 
+step :: GhostWorldView -> GhcState s -> ST s ()
+step world state = do
+        term <- readSTRef (terminate state)
+        unless term $ do
+                loadInstruction world state
+                c <- readSTRef (counter state)
+                when (c >= 1024) $ writeSTRef (terminate state) True
+
 loadInstruction :: GhostWorldView -> GhcState s -> ST s ()
 loadInstruction world state = do
 	pc <- readArray (registers state) PC
 	doInstruction world state (code state ! pc)
 	newpc <- readArray (registers state) PC
 	when (newpc == pc) $ writeArray (registers state) PC (pc + 1)
+        modifySTRef (counter state) succ
 
 interrupt :: GhostWorldView -> GhcState s -> Word8 -> ST s ()
 --

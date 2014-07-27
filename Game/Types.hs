@@ -5,6 +5,8 @@ module Game.Types where
 import Game.Dummy
 
 import Data.Array.ST
+import Data.Int
+import Data.Word
 import Data.Ix
 import Data.STRef
 
@@ -15,17 +17,17 @@ instance Show GameMap where
         where showLikeString = foldr (\ t -> ((show t) ++)) ""
 
 data Element =
-    Empty | Wall | Pill | PowerPill | Fruit | LambdaMan LambdaMan | Ghost Ghost
+    Empty | Wall | Pill | PowerPill | Fruit | LambdaManStart | GhostStart
+    deriving Eq
 
 instance Show Element where
-    show Empty         = " "
-    show Wall          = "#"
-    show Pill          = "."
-    show PowerPill     = "o"
-    show Fruit         = "%"
-    show (LambdaMan _) = "\\"
-    show (Ghost _)     = "="
-
+    show Empty          = " "
+    show Wall           = "#"
+    show Pill           = "."
+    show PowerPill      = "o"
+    show Fruit          = "%"
+    show LambdaManStart = "\\"
+    show GhostStart     = "="
 
 isWall :: Element -> Bool
 isWall Wall = True
@@ -46,56 +48,76 @@ isFruit _     = False
 isEatable :: Element -> Bool
 isEatable e = isPill e || isPowerPill e || isFruit e
 
--- TODO: add correct fruit points
 fruitPoints :: Integer -> Integer
-fruitPoints _ = 100
+fruitPoints 1  = 100
+fruitPoints 2  = 300
+fruitPoints 3  = 500
+fruitPoints 4  = 500
+fruitPoints 5  = 700
+fruitPoints 6  = 700
+fruitPoints 7  = 1000
+fruitPoints 8  = 1000
+fruitPoints 9  = 2000
+fruitPoints 10 = 2000
+fruitPoints 11 = 3000
+fruitPoints 12 = 3000
+fruitPoints _  = 5000
 
-data Fruit = Fr { fActive :: Bool, fFlavour :: Flavour }
-
-data Flavour =
-    Cherry | Strawberry | Peach | Apple | Grapes | Galaxian | Bell | Key
+type Tick = Word16
+type GInt = Word8
+type LInt = Int32
 
 data Agent = Ag {
-    initPos  :: (Integer, Integer),
-    initDir  :: Integer,
-    curPos   :: (Integer, Integer),
-    curDir   :: Integer,
-    primTPM  :: Integer,
-    secTPM   :: Integer,
+    initPos  :: (GInt, GInt),
+    initDir  :: GInt,
+    curPos   :: (GInt, GInt),
+    curDir   :: GInt,
+    primTPM  :: Tick,
+    secTPM   :: Tick,
     fast     :: Bool,
-    nextMove :: Integer
+    nextMove :: Tick
 }
+
+class IsAgent a where
+   getA :: a -> Agent
+   modA :: a -> (Agent -> Agent) -> a
 
 data LambdaMan = LM {
     lAgent       :: Agent,
-    lIndex       :: LambdaIndex,
     lCode        :: LambdaManCode,
-    lPowerPill   :: Maybe Integer,
-    lGhostsEaten :: Maybe Integer,
-    lLives       :: Integer,
-    lScore       :: Integer
+    lPowerPill   :: Maybe Tick,
+    lGhostsEaten :: Maybe Tick,
+    lLives       :: LInt,
+    lScore       :: LInt
 }
+
+instance IsAgent LambdaMan where
+    getA       = lAgent
+    modA man f = man {lAgent = f (lAgent man)}
 
 data Ghost = Gh {
     gAgent      :: Agent,
-    gIndex      :: GhostIndex,
+    gIndex      :: Word8,
     gCode       :: GhostCode,
     gVisible    :: Bool,
     gFrightened :: Bool
 }
 
-data LambdaIndex = LOne | LTwo deriving (Eq, Ord, Ix)
 
-data GhostIndex = GOne | GTwo | GThree | GFour deriving (Eq, Ord, Ix)
+instance IsAgent Ghost where
+    getA         = gAgent
+    modA ghost f = ghost {gAgent = f (gAgent ghost)}
 
 data GameState s = GS {
-    ticks      :: STRef s Integer,
-    gameMap    :: STArray s (Integer, Integer) Element,
-    lambdaMen  :: STArray s LambdaIndex (STRef s LambdaMan),
-    ghosts     :: STArray s GhostIndex (STRef s Ghost),
-    frightMode :: STRef s (Maybe Integer),
+    ticks      :: STRef s Tick,
+    gameMap    :: STArray s (GInt, GInt) Element,
+    ghosts     :: STUArray s GInt Ghost,
+    lambdaMan  :: STRef s LambdaMan,
+    frightMode :: STRef s (Maybe Tick),
+    pillCount  :: STRef s Tick,
     fruitState :: STRef s Bool,
-    pillCount  :: STRef s Integer,
-    mapDims    :: (Integer, Integer),
-    level      :: Integer
+    fruitPos   :: (GInt, GInt),
+    mapDims    :: (GInt, GInt),
+    level      :: Word8,
+    end        :: Tick
  }
