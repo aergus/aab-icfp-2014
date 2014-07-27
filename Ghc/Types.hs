@@ -12,7 +12,7 @@ import Data.Array.MArray
 import Data.Array.Unboxed
 
 data Register = A | B | C | D | E | F | G | H | PC
-	deriving (Read, Show, Enum, Eq, Ord, Ix)
+	deriving (Read, Show, Enum, Bounded, Eq, Ord, Ix)
 
 data Arg a = RegArg Register | IRegArg Register | Const a | Memory a
 	deriving (Eq, Read, Show, Functor)

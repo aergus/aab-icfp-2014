@@ -170,11 +170,11 @@ parseGhc :: String -> Either (ParseError) [ELine]
 parseGhc = parse ghcParser "unknown"
 
 --TODO: REWRITE
-resolveIdentifier :: [ELine] -> [Instruction]
+resolveIdentifier :: [ELine] -> ([Instruction], [(String,Word8)])
 resolveIdentifier el = let m1 = concat (zipWith (\a b -> zip a (repeat b)) (map lbls el) [0..])
                            m2 = concat $ map def el
                            m3 = zip (concat $ map defEnum el) [255,254..0]
                            m =M.fromList $ m1 ++ m2 ++ m3
                            f (Right x) = x
                            f (Left y)  = m M.! y
-                       in map ( fmap (fmap f). instr) el
+                       in (map ( fmap (fmap f). instr) el,m3)
