@@ -28,10 +28,10 @@ compileWithLabels = M.toAscList . precompile
 transform :: LISP -> LabelLCode
 transform (main,defs) = let l = length defs in
                         let (labels, rest) = splitAt (l+1) rootlabels in
-                        let ctxt =( (M.fromList [(name,(1,i,True)) | ((name,_),i) <- zip defs [0..]]) `M.union` (fst firstcontext), 1) in
+                        let ctxt =(M.fromList [(name,(1,i,True)) | ((name,_),i) <- zip defs [0..]]) `M.union` (fst firstcontext) in
                          (foldr (<+>) (toCode $ [DUM l]++[LDF s | s <- labels]++[RAP l,RTN])
-                          [floatAt s $ (tr (split i rest) ctxt exp)<+>(toCode [RTN])| (s,exp,i) <- zip3 labels ((map snd defs)++[main]) [1..]])
-                          
+                          [floatAt s $ (tr (split i rest) (ctxt,2) exp)<+>(toCode [RTN])| (s,exp,i) <- zip3 labels ((map snd defs)) [1..]])
+                          <+> (floatAt (labels !! l) $ (tr (split l rest) (ctxt,1) main)<+>(toCode [RTN])) 
 -- TRIPLE-CHECK LEVELS HERE! 
 
 data Expression = App Expression [Expression]
@@ -201,7 +201,7 @@ type LabelLCode = M.Map Label [LInstr Label] --main entry point is label "".
 
 toCode :: [LInstr Label] -> LabelLCode
 toCode xs = M.fromList [("",xs)]
-
+ 
 (<+>) :: LabelLCode -> LabelLCode -> LabelLCode  --assume collision free labels. (can we??)
 (<+>) = M.unionWithKey (\k -> if k=="" then (++) else error "label collision")
 

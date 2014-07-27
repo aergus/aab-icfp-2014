@@ -1,4 +1,4 @@
-module Test where
+module GCC.Test where
 
 import GCC.Step
 import GCC.Types
@@ -59,10 +59,9 @@ testcode1 = M.fromList . (zip [0..]) $ [
  AP 1,
  RTN]
 
-testcode2 :: [Instruction]
 testcode2 = [DUM 1,LDF 6,LDF 11,RAP 1,RTN,RTN,LD 0 1,LDC 0,CEQ,SEL 24 27,RTN,LDC 4,LDC 13,LDC 53,LDC 64,LDC 0,CONS,CONS,CONS,CONS,LDC 2,LD 0 0,AP 2,RTN,LD 0 0,CAR,JOIN,LD 0 0,CAR,LD 0 1,LDC 1,SUB,LD 1 0,AP 2,JOIN]
 
-
+runtest :: [Instr Int] -> IO State
 runtest testcode = let code = M.fromList . (zip [0..]) $ testcode in
                    do putStrLn$ "The first instruction is: "++ (show (code M.! 0))
                       test code startstate
