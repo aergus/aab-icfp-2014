@@ -72,7 +72,7 @@ lispName = do
   return $ Name id
 
 lispInt = do
-  n <- decimal lexer
+  n <- integer lexer
   whiteSpace lexer
   return $ IntLit$ fromInteger $ n
 

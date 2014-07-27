@@ -193,6 +193,10 @@ data LInstr a =     LDC Int      --LDC loads int constant
                   | RAP Int     --RAP n: pop closure cell. Fill empty frame (pointed to by closure?) with n arguments from the stack. Push stack, parent of current environment, and return address. Set environment frame pointer to frame pointer from closure cell. Jump to code(closure).
                   | STOP deriving (Show, Functor)
 
+printLInstr :: LInstr Int -> String
+printLInstr (LDC n) = if n<0 then "LDC -"++(show (-n)) else "LDC "++(show n)
+printLInstr x       = show x
+
 type Label = String
 
 rootlabels :: [Label]
