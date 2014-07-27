@@ -43,5 +43,16 @@ data GhcState s = GS {
 	code :: Array Word8 Instruction,
 	mem :: STUArray s Word8 Word8,
 	counter :: STRef s Integer,
-	terminate :: STRef s Bool
+	terminate :: STRef s Bool,
+        dir :: STRef s Word8
+}
+
+-- world from the view of a ghost
+data GhostWorldView = WS {
+        lambdaManXY :: (Word8, Word8),
+        myIndex :: Word8,
+        ghostStartCoordinates :: Array Word8 (Word8, Word8),
+        ghostCurCoordinates :: Array Word8 (Word8, Word8),
+        ghostVitDir :: Array Word8 (Word8,Word8),
+        gameMap :: Array (Word8,Word8) Word8
 }

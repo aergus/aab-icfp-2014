@@ -1,0 +1,59 @@
+;Do I have to init?
+        DEF INIT_STATUS 255
+        DEF UP 0
+        DEF RIGHT 1
+        DEF DOWN 2
+        DEF LEFT 3
+        jeq init,[INIT_STATUS],0
+main:
+
+; Move to lambda man
+comparecoordinates:
+int 3 ; Get our ghost index in A	
+int 5 ; Get our coordinates
+; move them to c and d
+mov c,a
+mov d,b
+; Get lambda-man's coordinates
+int 1
+; Which difference is bigger?
+mov e,a
+sub e,c
+mul e,e ; e = dx^2
+mov f,b
+sub f,d
+mul f,f ; f = dy^2
+JLT ydiv,e,f
+xdiv:
+JGT compare_right, a,c
+compare_left:
+mov a,3
+mov pc,return
+compare_right:
+mov a,1
+mov pc,return
+ydiv:
+JGT compare_down, b,d
+compare_up:
+mov a,0
+mov pc,return
+compare_down:
+mov a,2
+mov pc,return
+
+return:
+;Gesund?
+mov c,a
+int 3
+int 6
+mul a,2 ; 1 -> 2 reverses the direction via xor
+xor a,c
+and a,3
+int 0
+hlt
+
+; Initialize some stuff?
+; 
+init:
+        inc [INIT_STATUS]
+        mov pc, main

@@ -10,15 +10,15 @@ import qualified Data.Map as M
 
 type EArg = Arg (Either String Word8)
 type EInstr = Instr EArg
-data ELine = Line {def :: [(String, Word8)], lbls :: [String], instr :: EInstr}
-	deriving (Show)
+data ELine = Line {def :: [(String, Word8)], defEnum :: [String], lbls :: [String], instr :: EInstr}
+        deriving (Show)
 
 reg = zip (map (:[]) ['a'..'h']++["pc"]) [A .. PC]
 
 zeroarity = [("HLT", HLT)]
 onearity  = [("INC", INC, [noPC]),
              ("DEC", DEC, [noPC]),
-	     ("INT", INT, [ghcCon])]
+             ("INT", INT, [ghcCon])]
 twoarity  = [("MOV", MOV, [argument, argument]),
              ("ADD", ADD, [noPC, argument]),
              ("SUB", SUB, [noPC, argument]),
@@ -33,24 +33,24 @@ threearity= [("JLT", JLT, [ghcCon, argument, argument]),
 
 ghcParser :: GenParser Char s [ELine]
 ghcParser = do
-	whiteSpace lexer
-	ins <- many (lexeme lexer ghcLine)
-	eof
-	return ins
+        whiteSpace lexer
+        ins <- many (lexeme lexer ghcLine)
+        eof
+        return ins
 
 argument :: GenParser Char s EArg
 argument = do
    ghcReg
-   <|> ghcIReg
+   <|> try ghcIReg
    <|> ghcCon
    <|> ghcMem
 
 noConst :: GenParser Char s EArg
 noConst = do
-	 p <- argument
+         p <- argument
          case p of
-		  Const _ -> fail "no const allowed"
-		  _ -> return p
+                  Const _ -> fail "no const allowed"
+                  _ -> return p
 
 noPC :: GenParser Char s EArg
 noPC = do
@@ -69,6 +69,7 @@ ghcEither = ghcWord <|> ghcIdent
 ghcWord :: GenParser Char s (Either String Word8)
 ghcWord = do
   x <- decimal lexer
+  whiteSpace lexer
   return $ Right $ fromInteger x
 
 ghcIdent :: GenParser Char s (Either String Word8)
@@ -84,82 +85,96 @@ ghcMem = brackets lexer $ fmap (Memory) $ ghcEither
 ghcLine :: GenParser Char s ELine
 ghcLine = do
   defs <- many ghcDef
+  defEnums <- many ghcDefEnum
   lbls <- many $ try ghcLabel
+
   instr <- ghcInstruction
-  return $Line defs lbls instr
+  return $Line defs defEnums lbls instr
 
 ghcDef :: GenParser Char s (String, Word8) 
 ghcDef = do
-	reserved lexer "DEF"
-	id <- identifier lexer
-	num <- decimal lexer
-	return (id, fromInteger num)
+        reserved lexer "DEF"
+        id <- identifier lexer
+        num <- decimal lexer
+        whiteSpace lexer
+        return (id, fromInteger num)
+
+ghcDefEnum :: GenParser Char s String 
+ghcDefEnum = do
+        reserved lexer "DefEnum"
+        id <- identifier lexer
+        return id
 
 ghcLabel :: GenParser Char s String
 ghcLabel = do ident <- identifier lexer
               colon lexer
-	      return ident
+              return ident
 
 ghcInstruction :: GenParser Char s EInstr
 ghcInstruction = do
-	ghcZeroarity
-	<|> ghcOnearity
-	<|> ghcTwoarity
-	<|> ghcThreearity
+        ghcZeroarity
+        <|> ghcOnearity
+        <|> ghcTwoarity
+        <|> ghcThreearity
 
 ghcZeroarity = choice $ map (\ (x, y) -> reserved lexer x >> return y) zeroarity
 ghcOnearity = choice $ map (\ (x, y, [z1]) -> reserved lexer x >> fmap y z1) onearity
 ghcTwoarity = choice $ map (\ (x, y, [z1,z2]) -> reserved lexer x >> do
-	a <- z1
-	comma lexer
-	b <- z2
-	return (y a b)) twoarity
+        a <- z1
+        comma lexer
+        b <- z2
+        return (y a b)) twoarity
 ghcThreearity = choice $ map (\ (x, y, [z1,z2,z3]) -> reserved lexer x >> do
-	a <- z1
-	comma lexer
-	b <- z2
-	comma lexer
-	c <- z3
-	return (y a b c) ) threearity
+        a <- z1
+        comma lexer
+        b <- z2
+        comma lexer
+        c <- z3
+        return (y a b c) ) threearity
 
 
 lexer = makeTokenParser ghcLanguage
 
 ghcLanguage :: LanguageDef st
 ghcLanguage = LanguageDef { commentStart="",
-		commentEnd="",
-		commentLine=";",
-		nestedComments=False,
-		caseSensitive=False,
-		identStart=letter,
-		identLetter=letter,
-		opStart=letter,
-		opLetter=letter,
-		reservedNames=map fst reg ++ [
-		        "DEF",
-			"MOV",
-			"INC",
-			"DEC",
-			"ADD",
-			"SUB",
-			"MUL",
-			"DIV",
-			"AND",
-			"OR",
-			"XOR",
-			"JLT",
-			"JEQ",
-			"JGT",
-			"INT",
-			"HLT"],
-		reservedOpNames=[]
+                commentEnd="",
+                commentLine=";",
+                nestedComments=False,
+                caseSensitive=False,
+                identStart=letter <|> oneOf "_",
+                identLetter=letter <|> oneOf "_",
+                opStart=letter,
+                opLetter=letter,
+                reservedNames=map fst reg ++ [
+                        "DEF",
+                        "DefEnum",
+                        "MOV",
+                        "INC",
+                        "DEC",
+                        "ADD",
+                        "SUB",
+                        "MUL",
+                        "DIV",
+                        "AND",
+                        "OR",
+                        "XOR",
+                        "JLT",
+                        "JEQ",
+                        "JGT",
+                        "INT",
+                        "HLT"],
+                reservedOpNames=[]
 }
 
 parseGhc :: String -> Either (ParseError) [ELine]
 parseGhc = parse ghcParser "unknown"
 
+--TODO: REWRITE
 resolveIdentifier :: [ELine] -> [Instruction]
-resolveIdentifier el = let m = M.fromList $ concat $ zipWith (\a b -> zip a (repeat b)) (map lbls el) [0..] ++ map (def) el
-		           f (Right x) = x
-		           f (Left y)  = m M.! y
+resolveIdentifier el = let m1 = concat (zipWith (\a b -> zip a (repeat b)) (map lbls el) [0..])
+                           m2 = concat $ map def el
+                           m3 = zip (concat $ map defEnum el) [255,254..0]
+                           m =M.fromList $ m1 ++ m2 ++ m3
+                           f (Right x) = x
+                           f (Left y)  = m M.! y
                        in map ( fmap (fmap f). instr) el
