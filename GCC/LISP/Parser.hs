@@ -65,7 +65,7 @@ lispDefinition = do
 	return (ident, e)
 
 lispExpression :: GenParser Char s Expression
-lispExpression = lispName <|> lispInt <|> (parens lexer lispTerm)
+lispExpression = lispName <|> lispInt <|> (parens lexer lispTerm) <|> (braces lexer lispDo)
 
 lispName = do
   id <- identifier lexer
@@ -121,6 +121,21 @@ lispThreearity = choice $ map (\ (x, y) -> reserved lexer x >> do
 	c <- lispExpression
 	return (y a b c)) threearity
 
+lispDo :: GenParser Char s Expression
+lispDo = do
+        binds <- many $ try lispBind
+        exp <- lispExpression
+        return $ Do binds exp
+
+lispBind :: GenParser Char s (String, Expression)
+lispBind = do
+        ident <- identifier lexer
+        reservedOp lexer "<-"
+        exp <- lispExpression
+        semi lexer
+        return (ident,exp)
+
+
 lexer = makeTokenParser lispLanguage
 
 lispLanguage :: LanguageDef st
@@ -132,9 +147,9 @@ lispLanguage = LanguageDef { commentStart="",
 		identStart=oneOf "_" <|> letter,
 		identLetter=oneOf "_" <|> letter,
 		opStart=oneOf ":+-*/<=>\\[-",
-		opLetter=oneOf "=r]>",
+		opLetter=oneOf "=r]>-",
 		reservedNames=map fst onearity ++ map fst threearity,
-		reservedOpNames=map fst twoarity ++ ["\\", "\\r", "[]", "->"]
+		reservedOpNames=map fst twoarity ++ ["\\", "\\r", "[]", "->", "<-"]
 }
 
 parseLisp :: String -> Either ParseError LISP
