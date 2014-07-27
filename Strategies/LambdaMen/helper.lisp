@@ -23,7 +23,26 @@ _filter =
 
 ; _elem :: Eq a => a -> [a] -> Int
 _elem =
-(\ x xs -> (_foldr (\ y v -> (_or (== x y) v)) 0 xs))
+(\ x xs -> (IF (NIL xs) 0 (IF (== x (CAR xs)) 1 (_elem x (CDR xs)))))
+
+
+; _dist :: Int -> Int -> Int -> Int -> Int
+_dist =
+(\ x y v w ->
+   (_max (_absDiff x v) (_absDiff y w))
+)
+
+; _absDiff :: Int -> Int -> Int
+_absDiff =
+(\ x y ->
+  (_max (- x y) (- y x))
+)
+
+; _max :: Int -> Int -> Int
+_max =
+(\ x y ->
+  (IF (< y x) x y)
+)
 
 ; _mod :: Int -> Int -> Int
 _mod =
@@ -31,7 +50,7 @@ _mod =
 
 ; _and :: Int -> Int -> Int
 _and =
-(\ a b -> (IF (== a 1) (IF (== b 1) 1 0) 1))
+(\ a b -> (IF (== a 0) 0 (IF (== b 0) 0 1)))
 
 ; _or :: Int -> Int -> Int
 _or =
