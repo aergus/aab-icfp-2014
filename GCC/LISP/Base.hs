@@ -9,6 +9,12 @@ import Data.List
 type LISP = (Expression,[(String, Expression)])
 
 
+-- TODO Optimization stuff:
+--    could replace [RAP l, RTN] by [TRAP l], [AP l, RTN] by [TAP l], [SEL t f, JOIN] by [TSEL t f] for performance (saves 1 call of ret each)
+--    right now all toplevel decs a=exp are turned into a function putting exp on the stack, to be called with AP 0. In case of toplevel
+--          a=(\ args -> exp), could instead save function computing exp.
+--          a=(\r g args -> exp), can directly simplify to a=(\ args -> exp{subs g by a})
+
 
 precompile :: LISP -> LabelLCode
 precompile (main,defs) = transform $ (prepare main, [(s,prepare exp) | (s,exp) <- defs])
