@@ -141,7 +141,7 @@ lexer = makeTokenParser lispLanguage
 lispLanguage :: LanguageDef st
 lispLanguage = LanguageDef { commentStart="",
 		commentEnd="",
-		commentLine=";",
+		commentLine="--",
 		nestedComments=False,
 		caseSensitive=False,
 		identStart=oneOf "_" <|> letter,
