@@ -55,4 +55,4 @@ data GhostWorldView = WS {
         ghostCurCoordinates :: Array Word8 (Word8, Word8),
         ghostVitDir :: Array Word8 (Word8,Word8),
         gameMap :: Array (Word8,Word8) Word8
-}
+} deriving Show
