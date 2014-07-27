@@ -62,7 +62,6 @@ lambdaTick gs =
                                                     fromJust dir')))
                     (lambdaMen gs)
 
-       -- TODO: implement prohibited moves for ghosts
        dummy <- mapArray (\ g -> do m <- readSTRef g
                                     dir'' <- readArray ghostDirs (gIndex m)
                                     dir' <- dir''
@@ -71,8 +70,14 @@ lambdaTick gs =
                                                (dirToCoords (gPos m)
                                                     (fromJust dir'))
                                            when (not $ isWall target)
-                                               (modifySTRef g $ moveGhost $
-                                                    fromJust dir'))) (ghosts gs)
+                                               (if (even (curDir (gAgent m) -
+                                                        fromJust dir'))
+                                                then modifySTRef g $ moveGhost $
+                                                        fromJust dir'
+                                                -- TODO: do the right thing here
+                                                else modifySTRef g $ moveGhost $
+                                                        fromJust dir')))
+                                    (ghosts gs)
 
        fright <- readSTRef (frightMode gs)
        when (isJust fright) $
@@ -124,6 +129,7 @@ lambdaTick gs =
                                                                 (reset True))
                                                                (ghosts gs)
                                                            modifySTRef l die
+                                                   -- TODO: eat ghost
                                                    else do modifySTRef g
                                                                (reset False)))
                                         (ghosts gs)
@@ -169,12 +175,6 @@ dirToCoords (x, y) 1 = (x + 1, y)
 dirToCoords (x, y) 2 = (x, y + 1)
 dirToCoords (x, y) 3 = (x - 1, y)
 dirToCoords _      _ = undefined -- TODO: add exception handling?
-
-updateFrightMode :: Maybe Integer -> Maybe Integer
-updateFrightMode fright  = if (isNothing fright || fromJust fright == 0)
-                           then Nothing
-                           else do f <- fright
-                                   return (f - 1)
 
 eatPoints :: Integer -> LambdaMan -> LambdaMan
 eatPoints n man =

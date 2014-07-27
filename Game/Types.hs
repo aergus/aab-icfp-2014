@@ -46,9 +46,20 @@ isFruit _     = False
 isEatable :: Element -> Bool
 isEatable e = isPill e || isPowerPill e || isFruit e
 
--- TODO: add correct fruit points
 fruitPoints :: Integer -> Integer
-fruitPoints _ = 100
+fruitPoints 1  = 100
+fruitPoints 2  = 300
+fruitPoints 3  = 500
+fruitPoints 4  = 500
+fruitPoints 5  = 700
+fruitPoints 6  = 700
+fruitPoints 7  = 1000
+fruitPoints 8  = 1000
+fruitPoints 9  = 2000
+fruitPoints 10 = 2000
+fruitPoints 11 = 3000
+fruitPoints 12 = 3000
+fruitPoints _  = 5000
 
 data Fruit = Fr { fActive :: Bool, fFlavour :: Flavour }
 
