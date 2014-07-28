@@ -1,10 +1,64 @@
 -- accList :: [a] -> Int -> a
 _accList =
-(\r accList x l -> (IF (== l 0) (CAR x) (accList (CDR x) (- l 1))))
+(\ x l -> (IF (== l 0) (CAR x) (_accList (CDR x) (- l 1))))
+
+-- _accMatrix :: [[a]] -> (Int, Int) -> a
+_accMatrix =
+(\ xss pos -> (_accList (_accList xss (CDR pos)) (CAR pos)))
 
 -- _lastTuple :: ?
 _lastTuple =
 (\r lastTuple x l -> (IF (< l 2) (CDR x) (lastTuple (CDR x) (- l 1))))
+
+-- _accAndModList :: [a] -> Int -> a -> (a, [a])
+_accAndModList =
+(\ xs n x ->
+   (IF (== n 0)
+       (: (CAR xs) (: x (CDR xs)))
+       { pr <- (_accAndModList (CDR xs) (- n 1) x);
+         (: (CAR pr) (: (CAR xs) (CDR pr)))
+       }
+   )
+)
+
+-- _accAndModMatrix :: [[a]] -> (Int, Int) -> a -> (a, [[a]])
+_accAndModMatrix =
+(\ xss pos x ->
+  (IF (== (CDR pos) 0)
+      { pr <- (_accAndModList (CAR xss) (CAR pos) x);
+        (: (CAR pr) (: (CDR pr) (CDR xss)))
+      }
+      { pr <- (_accAndModMatrix (CDR xss) (: (CAR pos) (- (CDR pos) 1)) x);
+        (: (CAR pr) (: (CAR xss) (CDR pr)))
+      }
+  )
+)
+
+-- _listSearchR :: Eq a => a -> [a] -> Int -> Int
+_listSearchR =
+(\ x xs k ->
+   (IF (NIL xs)
+       -1
+       (IF (== (CAR xs) x)
+           k
+           (_listSearchR x (CDR xs) (+ k 1))
+       )
+   )
+)
+
+-- _matrixSearchR :: Eq a => a -> [[a]] -> Int -> (Int, Int)
+_matrixSearchR =
+(\ x xss k ->
+  (IF (NIL xss)
+      (: -1 -1)
+      { i <- (_listSearchR x (CAR xss) 0);
+        (IF (<= 0 i)
+            (: i k)
+            (_matrixSearchR x (CDR xss) (+ k 1))
+        )
+      }
+  )
+)
 
 -- _foldr :: (a -> b -> b) -> b -> [a] -> b
 _foldr =
@@ -21,10 +75,19 @@ _filter =
                             (: (CAR l) (_filter p (CDR l)))
                             (_filter p (CDR l)))))
 
+-- _eqPair :: (Eq a, Eq b) -> (a, b) -> (a, b) -> Int
+_eqPair =
+(\ x y ->
+   (_and (== (CAR x) (CAR y)) (== (CDR x) (CDR y)))
+)
+
+-- _elemEq :: a -> [a] -> (a -> Int) -> Int
+_elemEq =
+(\ x xs eq -> (IF (NIL xs) 0 (IF (eq x (CAR xs)) 1 (_elemEq x (CDR xs) eq))))
+
 -- _elem :: Eq a => a -> [a] -> Int
 _elem =
-(\ x xs -> (IF (NIL xs) 0 (IF (== x (CAR xs)) 1 (_elem x (CDR xs)))))
-
+(\ x xs eq -> (IF (NIL xs) 0 (IF (== x (CAR xs)) 1 (_elem x (CDR xs)))))
 
 -- _dist :: Int -> Int -> Int -> Int -> Int
 _dist =

@@ -39,4 +39,4 @@ _addNewCell =
           (: (: oldCell (: x y)) (CDR (CDR state))))))
 
 _getCell =
-(\ gameMap x y -> (__accList (__accList gameMap x) y))
+(\ gameMap x y -> (__accList (__accList gameMap y) x))
