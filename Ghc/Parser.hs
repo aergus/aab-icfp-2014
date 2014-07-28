@@ -137,8 +137,8 @@ ghcThreearity = choice $ map (\ (x, y, [z1,z2,z3]) -> reserved lexer x >> do
 lexer = makeTokenParser ghcLanguage
 
 ghcLanguage :: LanguageDef st
-ghcLanguage = LanguageDef { commentStart="",
-                commentEnd="",
+ghcLanguage = LanguageDef { commentStart="{-",
+                commentEnd="-}",
                 commentLine=";",
                 nestedComments=False,
                 caseSensitive=False,

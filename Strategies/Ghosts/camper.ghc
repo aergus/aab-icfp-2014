@@ -172,6 +172,7 @@ move_return:
         mov [a],weights_minor
         xor a,2
         mov [a],weights_minor_rev
+        {-
         ; DEBUG
         mov a, [128]
         mov b, [129]
@@ -182,6 +183,7 @@ move_return:
         mov g, [66]
         mov h, [67]
         int 8
+        -}
 scatter:
         ; we assume there are 4 ghosts
         int 3
@@ -216,7 +218,6 @@ scatter_continue:
         mov g, [66]
         mov h, [67]
         int 8
-
 move_return2:
         ; DEBUG
         ;mov a, [128]
