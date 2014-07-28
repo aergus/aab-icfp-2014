@@ -1,6 +1,6 @@
 
 
-The project consists of several modules:
+The project consists of several modules. Everything is Haskell code:
   GCC (and submodules) contain code for emulating and generating Lambda-Man-Code
   Ghc contains code for emulating and generating Ghost code
   Game contains code for emulating the game
