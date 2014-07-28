@@ -34,15 +34,16 @@ compileWithLabels = M.toAscList . precompile
 transform :: LISP -> LabelLCode
 transform (main,defs) = let l = length defs in
                         let (labels, rest) = splitAt (l+1) rootlabels in
-                        let (ctxtdata,lvls) = unzip[((name,(1,i,snd (callHow exp))),(fst (callHow exp),exp)) | ((name,exp),i) <- zip defs [0.. ]] in
-                        let ctxt =(M.fromList ctxtdata) `M.union` (fst firstcontext) in
+                        let (lvls,call,ctxts,expsToCall) = unzip4 . (map callHow) . (map snd) $ defs in
+                        let names = map fst defs in   
+                        let ctxt =(M.fromList [(name,(1,i,instr))| (name,i,instr) <- zip3 names [0..] call]) `M.union` (fst firstcontext) in
                          (foldr (<+>) (toCode $ [DUM l]++[LDF s | s <- labels]++[RAP l,RTN])
-                          [floatAt s $ (tr (split i rest) (ctxt,lvl) exp)<+>(toCode [RTN])| (s,(lvl,exp),i) <- zip3 labels lvls [1..]])
-                          <+> (floatAt (labels !! l) $ (tr (split l rest) (ctxt,1) main)<+>(toCode [RTN])) 
+                          [floatAt s $ (tr (split i rest) (ctxt`M.union` fctxt,lvl) exp)<+>(toCode [RTN])| (s,lvl,exp,i,fctxt) <- zip5 labels lvls expsToCall [1..] ctxts])
+                          <+> (floatAt (labels !! l) $ (tr (split 0 rest) (ctxt,1) main)<+>(toCode [RTN])) 
 
-callHow:: Expression -> (Int,[LInstr String])
-callHow (Lam _ _) = (1,[])
-callHow _         = (2,[AP 0])
+callHow:: Expression -> (Int,[LInstr String],M.Map String (Int,Int,[LInstr Label]),Expression)
+callHow (Lam args exp) = (2,[], M.fromList [(name,(2,i,[]))|(name,i) <- zip args [0..]],exp)
+callHow x         = (2,[AP 0],M.fromList [],x)
 
 data Expression = App Expression [Expression]
             | Name String

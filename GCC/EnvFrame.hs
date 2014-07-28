@@ -73,7 +73,7 @@ newframeWith xs env = let (k:rest) = freeKeys env in
                         setEnv k (env {envframes = M.insert k newFrame (envframes env), freeKeys = rest})
 
 fillframeWith :: [DataValue] -> EnvChain -> EnvChain
-fillframeWith xs env = let newFrame = (currentFrame env) {values=xs,dummy=False,refs=0} in
+fillframeWith xs env = let newFrame = (currentFrame env) {values=xs,dummy=False} in
                         env {envframes = M.insert (current env) newFrame (envframes env)}
 
 
