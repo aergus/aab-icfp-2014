@@ -13,10 +13,22 @@ _applyDir =
    )
 )
 
+-- _fruitState :: WorldState -> Int
+_fruitState =
+(\ world ->
+  (CAR (CDR (CDR (CDR world))))
+)
+
 -- _myPos :: WorldState -> (Int, Int)
 _myPos =
 (\ world ->
   (CAR (CDR (CAR (CDR world))))
+)
+
+-- _myLives :: WorldState -> Int
+_myLives =
+(\ world ->
+  (CAR (CDR (CDR (CDR (CAR (CDR world))))))
 )
 
 -- _allGhosts :: WorldState -> [Ghost]
@@ -42,6 +54,28 @@ _ghostsClear =
             )
         ) (CAR ghosts)
        )
+   )
+)
+
+-- _ghostsAhead :: [Ghost] -> (Int, Int) -> [Int] -> Int
+_ghostsAhead =
+(\ ghosts pos route ->
+   (IF (NIL ghosts)
+       0
+       { g <- (CAR ghosts);
+         (IF (_eqPair (CAR (CDR g)) (_applyDir pos (CAR route)))
+             1
+             { r <- (CDR route);
+               (IF (IF (_not (NIL r))
+                       (_eqPair (CAR (CDR g)) (_applyDir pos (CAR r)))
+                       0
+                   )
+                   1
+                   (_ghostsAhead (CDR ghosts) pos route)
+               )
+             }
+         )
+       }
    )
 )
 
