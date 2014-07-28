@@ -1,0 +1,327 @@
+DEF his_start 128
+DEF his_end 191 ; 128 + 63 works fine with and (for larger numbers)
+DEF weights 64
+DEF weights_major 100
+DEF weights_major_rev 50 
+DEF weights_minor 90
+DEF weights_minor_rev 70
+DEF entropy 192
+DEFENUM his_cur_x
+DEFENUM his_cur_y
+DEFENUM his_dir
+DEFEnum INIT_STATUS
+        jeq init,[INIT_STATUS],0
+
+; move to lambda
+DEFENUM move_x
+DEFENUM move_y
+main:
+history:
+        int 3
+        int 5
+        mov [neighbours_in_x], a
+        mov [neighbours_in_y], b
+        mov [neighbours_rt], history_return
+        mov pc,neighbours
+history_return:
+        jlt offend, [neighbours_out],3 ;better nop since I don't decide
+                                     ; anything
+        ; int 8
+        ; Same crossing as before?
+        jeq history_x, [his_cur_x], [neighbours_in_x]
+        mov pc,history_new
+history_x:
+        jeq history_old, [his_cur_y], [neighbours_in_y]
+history_new:
+        ; update crossing
+        mov [his_cur_x], [neighbours_in_x]
+        mov [his_cur_y], [neighbours_in_y]
+        ; wipe directions
+        mov [128],1
+        mov [129],1
+        mov [130],1
+        mov [131],1
+history_old:
+        int 3
+        int 6 ; get our dir in b
+        xor b, 2 ; reverse dir
+        add b, 128;
+        inc [b] ; don't go in this direction
+        ; DEBUG
+move:
+        int 3
+        int 6
+        jeq panic, a, 1
+normal:
+        int 3
+        int 5
+        mov [move_x], a
+        mov [move_y], b
+        mov c,move_x
+        mov d,move_y
+        int 1
+        mov pc,prepare_compare
+panic: 
+        ; swap the coordinates -> inverse the logic
+        int 1
+        mov [move_x], a
+        mov [move_y], b
+        mov c,move_x
+        mov d,move_y
+        int 3 
+        int 5
+prepare_compare:
+        mov [compare_rt], move_return
+        mov pc,comparecoordinates
+move_return:
+        ; take a look at our neighbours
+        ; weight  
+        mov a,[compare_out_major]
+        add a, weights
+        mov [a],weights_major
+        xor a,2
+        mov [a],weights_major_rev
+        mov a,[compare_out_minor]
+        add a,weights
+        mov [a],weights_minor
+        xor a,2
+        mov [a],weights_minor_rev
+        ; DEBUG
+        mov a, [128]
+        mov b, [129]
+        mov c, [130]
+        mov d, [131]
+        mov e, [64]
+        mov f, [65]
+        mov g, [66]
+        mov h, [67]
+        int 8
+scatter:
+        ; we assume there are 4 ghosts
+        int 3
+        int 5
+        mov [move_x], a
+        mov [move_y], b
+        mov c,move_x
+        mov d,move_y
+        mov [compare_rt], scatter_return
+        ; save my cooridinates in [c],[d]
+        mov e,0
+scatter_loop:
+        mov a,e
+        int 5
+        mov pc, comparecoordinates
+scatter_return:
+        mov a,[compare_out_major]
+        jeq scatter_continue, [compare_out_major_val], 0
+        add a,weights
+        mov b,20
+        div b,[compare_out_major_val]
+        sub [a],b
+scatter_continue:
+        inc e
+        jlt scatter_loop, e,4
+        mov a, [128]
+        mov b, [129]
+        mov c, [130]
+        mov d, [131]
+        mov e, [64]
+        mov f, [65]
+        mov g, [66]
+        mov h, [67]
+        int 8
+
+compute_neighbours:
+        int 3
+        int 5
+        mov [neighbours_in_x], a
+        mov [neighbours_in_y], b
+        mov [neighbours_rt], move_return2
+        mov pc, neighbours
+move_return2:
+        ; DEBUG
+        ;mov a, [128]
+        ;mov b, [129]
+        ;mov c, [130]
+        ;mov d, [131]
+        ;mov e, [his_cur_x]
+        ;mov f, [his_cur_y]
+        ;int 8
+        int 3
+        int 6 ; b contains now our current direction
+        xor b,2 ; b contains the forbidden direction
+        ; can we go in the major direction?
+        ; loop over every direction in a and c (weights) d (forbidden)
+        ; e (random)
+        mov a,0
+        mov c,weights
+        mov e,entropy
+n_loop:
+        ; forbidden?
+        jeq n_forbidden, a,b
+        jeq n_forbidden, [a],0
+        div [c],[d]
+        div [c],[d]
+        add [c],[e]
+        mov pc,n_continue
+n_forbidden:
+        mov [c],0
+n_continue:
+        inc a
+        inc c
+        inc d
+        inc e
+        jlt n_loop,a,4
+        mov a, [128]
+        mov b, [129]
+        mov c, [130]
+        mov d, [131]
+        mov e, [64]
+        mov f, [65]
+        mov g, [66]
+        mov h, [67]
+        int 8
+get_max:
+        mov a,0
+        mov b,0
+        mov c,weights
+        mov d,0
+max_loop:
+        jlt no_max, [c],b
+        mov b,[c]
+        mov a,d
+no_max:
+        inc d
+        inc c
+        jlt max_loop,d,4
+        int 8
+        int 0
+        hlt
+
+; Initialize some stuff?
+; 
+init:
+        inc [INIT_STATUS]
+        mov pc, main
+
+; in ([neighbours_in_x], [neighbours_in_y]) coordinate pair
+; doesn't change neighbours_in_x and neighbours_in_y
+DEFENUM neighbours_in_x
+DEFENUM neighbours_in_y
+;uses
+; a b c e f 
+DEFENUM neighbours_x
+DEFENUM neighbours_y
+DEFENUM neighbours_counter ; as a counter
+; out 
+; [0] .. [3] contain the map information in this direction
+DEFENUM neighbours_out ; number of neighbours
+; jumps back to
+DEFENUM neighbours_rt
+
+neighbours:
+        ; set e f h for offset
+        mov e,neighbours_x
+        mov f,neighbours_y
+        mov [offset_rt],neighbours_offreturn
+        mov c,offup
+        mov [neighbours_out],0
+        mov [neighbours_counter],255
+neighbours_loop:
+        inc [neighbours_counter]
+        mov [neighbours_x],[neighbours_in_x]
+        mov [neighbours_y],[neighbours_in_y]
+        mov pc,c
+neighbours_offreturn:
+        add c,2
+        mov a,[neighbours_x]
+        mov b,[neighbours_y]
+        int 7
+        mov b,[neighbours_counter]
+        mov [b],a
+        jeq neighbours_end, a, 0
+        inc [neighbours_out]
+neighbours_end:
+        jlt neighbours_loop, [neighbours_counter], 3
+        mov pc,[neighbours_rt]
+
+; offset
+; in c direction
+;    h return
+; out add to [e] and [f] offset 
+; keeps e,f,h const
+; jumps to
+DEFENUM offset_rt
+; tains c
+
+offset:
+mul c,2
+add c,offup
+mov pc,c
+offup:
+        dec [f] ; go up
+        mov pc,[offset_rt]
+offright:
+        inc [e] ; go right
+        mov pc,[offset_rt]
+offdown:
+        inc [f] ; go down
+        mov pc,[offset_rt]
+offleft:
+        dec [e] ; go left
+        mov pc,[offset_rt]
+offend:
+        hlt
+
+DEFEnum compare_x_val
+DEFEnum compare_x_dir ; is set to 1 (right) if a >= [c] and 3 (left)
+                      ; otherwise
+DEFEnum compare_y_val ; is set to 2 (down) if b >= [d] and 0 (up) o/w
+DEFEnum compare_y_dir
+DEFEnum compare_out_major ; dominant direction
+DEFEnum compare_out_major_val
+DEFEnum compare_out_minor ; minor direction
+DEFEnum compare_out_minor_val
+
+
+; compares (a,b) and ([c],[d])
+; (a, b) is often set via interrupts
+; saves the result in compare_out
+; jumps to
+DEFEnum compare_rt
+; modifies only private stuff
+comparecoordinates:
+        ; Which difference is bigger?
+        mov [compare_x_val],a
+        sub [compare_x_val],[c]
+        mov [compare_y_val],b
+        sub [compare_y_val],[d]
+        jlt compare_left, a,[c] ; then a - [c] is negative
+compare_right:
+        mov [compare_x_dir],1
+        mov pc, compare_y
+compare_left:
+        mul [compare_x_val],255
+        mov [compare_x_dir],3
+compare_y:
+        jlt compare_up, b,[d]
+compare_down:
+        mov [compare_y_dir],2
+        mov pc, compare_xy
+compare_up:
+        mul [compare_y_val],255
+        mov [compare_y_dir],0
+compare_xy:
+        jgt compare_xdom, [compare_x_val],[compare_y_val]
+compare_ydom:
+        mov [compare_out_major], [compare_y_dir]
+        mov [compare_out_major_val], [compare_y_val]
+        mov [compare_out_minor], [compare_x_dir]
+        mov [compare_out_minor_val], [compare_x_val]
+        mov pc, [compare_rt]
+compare_xdom:
+        mov [compare_out_major], [compare_x_dir]
+        mov [compare_out_major_val], [compare_x_val]
+        mov [compare_out_minor], [compare_y_dir]
+        mov [compare_out_minor_val], [compare_y_val]
+        mov pc, [compare_rt]
