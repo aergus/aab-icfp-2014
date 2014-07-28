@@ -162,24 +162,3 @@ extractMain xs = let (a,b) = partition ((=="main").fst) xs
 		    [(_,x)] -> return (x,b)
 		    _ -> fail "multiple mains"
 
-
-
-
-
-
-
-
-
-
-
-
-
-
---{ x <- bla1; y <- bla2; exp}          ----> Do [("x",bla1),("y",bla2)] exp
--- ( meaning (\ x -> ((\y -> exp ) bla2) bla1) )
---
--- DoBlock : "{" ++ Block ++ "}"
--- Block   :  Bind ++ ";" ++ Block <|> Expression
--- Bind    : Word ++ "<-" ++ Expression
-
-

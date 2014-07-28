@@ -8,10 +8,6 @@ import Control.Monad
 import Data.Int
 import qualified Data.Map as M
 
-type EInstr = Instr (Either String Int32)
-data ELine =  ELine { lbls :: [String], instr :: EInstr }
-	deriving Show
-
 zeroarity = 
 	[("ADD", ADD),
 	("SUB", SUB),
@@ -37,36 +33,21 @@ twoarity  = [
 	("LD", LD),
 	("SEL", SEL)]
 
-gccParser :: GenParser Char s [ELine]
+gccParser :: GenParser Char s [Instruction]
 gccParser = do
 	whiteSpace lexer
-	ins <- many (lexeme lexer gccELine)
+	ins <- many (lexeme lexer gccInstr)
 	eof
 	return ins
 
-gccELine :: GenParser Char s ELine
-gccELine = do
-   labels <- many $ try gccLabel
-   inst   <- gccInstr
-   return $ ELine labels inst
-
-gccLabel :: GenParser Char s String
-gccLabel = do ident <- identifier lexer
-              colon lexer
-	      return $ ident
-
 gccInstr = gccZeroarity <|> gccOnearity <|> gccTwoarity
 
-argument :: GenParser Char s (Either String Int32)
-argument = argident <|> argconst
-
-argident = do
-	ident <- identifier lexer
-	return $ Left ident
+argument :: GenParser Char s Int32
+argument = argconst
 
 argconst = do
 	co <- integer lexer
-	return $ Right $ fromInteger co
+	return $ fromInteger co
 
 gccZeroarity = choice $ map (\ (x, y) -> reserved lexer x >> (return) y) zeroarity
 gccOnearity = choice $ map (\ (x, y) -> reserved lexer x >> fmap  y argument) onearity
@@ -93,13 +74,6 @@ gccLanguage = LanguageDef { commentStart="",
 		reservedOpNames=[]
 }
 
-parseGcc :: String -> Either (ParseError) [ELine]
+parseGcc :: String -> Either (ParseError) [Instruction]
 parseGcc = parse gccParser "unknown"
-
-
-resolveIdentifier :: [ELine] -> [Instr Int32]
-resolveIdentifier el = let m = M.fromList $ concat $ zipWith (\a b -> zip a (repeat b)) (map lbls el) [0..]
-		           f (Right x) = x
-		           f (Left y)  = m M.! y
-                       in map (fmap f. instr) el
 

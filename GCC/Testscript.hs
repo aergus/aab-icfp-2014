@@ -2,7 +2,7 @@
 
 module GCC.Testscript where
 
-import GCC.Test
+import GCC.Base
 import GCC.Parser
 
 import System.Environment
@@ -12,5 +12,6 @@ testgcc = do args <- getArgs
              code <- readFile (args !! 0)
              either
                 (putStrLn.("ERROR: "++).show)
-                (\x -> (runtest.(map (fmap fromIntegral)).resolveIdentifier $ x) >> (return ()))
+                (\x -> (runDebug x []) >> (return ()))
                 (parseGcc code)
+ 
