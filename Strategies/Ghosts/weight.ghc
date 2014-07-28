@@ -1,4 +1,14 @@
-;Do I have to init?
+DEF his_start 128
+DEF his_end 191 ; 128 + 63 works fine with and (for larger numbers)
+DEF weights 64
+DEF weights_major 100
+DEF weights_major_rev 50 
+DEF weights_minor 90
+DEF weights_minor_rev 70
+DEF entropy 192
+DEFENUM his_cur_x
+DEFENUM his_cur_y
+DEFENUM his_dir
 DEFEnum INIT_STATUS
         jeq init,[INIT_STATUS],0
 
@@ -6,6 +16,38 @@ DEFEnum INIT_STATUS
 DEFENUM move_x
 DEFENUM move_y
 main:
+history:
+        int 3
+        int 5
+        mov [neighbours_in_x], a
+        mov [neighbours_in_y], b
+        mov [neighbours_rt], history_return
+        mov pc,neighbours
+history_return:
+        jlt offend, [neighbours_out],3 ;better nop since I don't decide
+                                     ; anything
+        ; int 8
+        ; Same crossing as before?
+        jeq history_x, [his_cur_x], [neighbours_in_x]
+        mov pc,history_new
+history_x:
+        jeq history_old, [his_cur_y], [neighbours_in_y]
+history_new:
+        ; update crossing
+        mov [his_cur_x], [neighbours_in_x]
+        mov [his_cur_y], [neighbours_in_y]
+        ; wipe directions
+        mov [128],1
+        mov [129],1
+        mov [130],1
+        mov [131],1
+history_old:
+        int 3
+        int 6 ; get our dir in b
+        xor b, 2 ; reverse dir
+        add b, 128;
+        inc [b] ; don't go in this direction
+        ; DEBUG
 move:
         int 3
         int 6
@@ -26,12 +68,70 @@ panic:
         mov [move_y], b
         mov c,move_x
         mov d,move_y
-        int 3 int 5
+        int 3 
+        int 5
 prepare_compare:
         mov [compare_rt], move_return
         mov pc,comparecoordinates
 move_return:
         ; take a look at our neighbours
+        ; weight  
+        mov a,[compare_out_major]
+        add a, weights
+        mov [a],weights_major
+        xor a,2
+        mov [a],weights_major_rev
+        mov a,[compare_out_minor]
+        add a,weights
+        mov [a],weights_minor
+        xor a,2
+        mov [a],weights_minor_rev
+        ; DEBUG
+        mov a, [128]
+        mov b, [129]
+        mov c, [130]
+        mov d, [131]
+        mov e, [64]
+        mov f, [65]
+        mov g, [66]
+        mov h, [67]
+        int 8
+scatter:
+        ; we assume there are 4 ghosts
+        int 3
+        int 5
+        mov [move_x], a
+        mov [move_y], b
+        mov c,move_x
+        mov d,move_y
+        mov [compare_rt], scatter_return
+        ; save my cooridinates in [c],[d]
+        mov e,0
+scatter_loop:
+        mov a,e
+        int 5
+        mov pc, comparecoordinates
+scatter_return:
+        mov a,[compare_out_major]
+        jeq scatter_continue, [compare_out_major_val], 0
+        add a,weights
+        mov b,20
+        div b,[compare_out_major_val]
+        sub [a],b
+scatter_continue:
+        inc e
+        jlt scatter_loop, e,4
+        mov a, [128]
+        mov b, [129]
+        mov c, [130]
+        mov d, [131]
+        mov e, [64]
+        mov f, [65]
+        mov g, [66]
+        mov h, [67]
+        int 8
+
+compute_neighbours:
         int 3
         int 5
         mov [neighbours_in_x], a
@@ -39,24 +139,62 @@ move_return:
         mov [neighbours_rt], move_return2
         mov pc, neighbours
 move_return2:
+        ; DEBUG
+        ;mov a, [128]
+        ;mov b, [129]
+        ;mov c, [130]
+        ;mov d, [131]
+        ;mov e, [his_cur_x]
+        ;mov f, [his_cur_y]
+        ;int 8
         int 3
         int 6 ; b contains now our current direction
         xor b,2 ; b contains the forbidden direction
         ; can we go in the major direction?
-        mov a,[compare_out_major]
-        ; skip if forbidden direction
-        jeq move_minor,a,b
-        jgt move_final,[a],0
-        ; can we go in the minor direction?
-move_minor:
-        mov a,[compare_out_minor]
-        jeq move_rev_minor,a,b
-        jgt move_final,[a],0
-        ; can we go in the reverse minor direction?
-move_rev_minor:
-        xor a,2
-        ; otherwise -> hand?
-move_final:
+        ; loop over every direction in a and c (weights) d (forbidden)
+        ; e (random)
+        mov a,0
+        mov c,weights
+        mov e,entropy
+n_loop:
+        ; forbidden?
+        jeq n_forbidden, a,b
+        jeq n_forbidden, [a],0
+        div [c],[d]
+        div [c],[d]
+        add [c],[e]
+        mov pc,n_continue
+n_forbidden:
+        mov [c],0
+n_continue:
+        inc a
+        inc c
+        inc d
+        inc e
+        jlt n_loop,a,4
+        mov a, [128]
+        mov b, [129]
+        mov c, [130]
+        mov d, [131]
+        mov e, [64]
+        mov f, [65]
+        mov g, [66]
+        mov h, [67]
+        int 8
+get_max:
+        mov a,0
+        mov b,0
+        mov c,weights
+        mov d,0
+max_loop:
+        jlt no_max, [c],b
+        mov b,[c]
+        mov a,d
+no_max:
+        inc d
+        inc c
+        jlt max_loop,d,4
+        int 8
         int 0
         hlt
 
@@ -141,7 +279,9 @@ DEFEnum compare_x_dir ; is set to 1 (right) if a >= [c] and 3 (left)
 DEFEnum compare_y_val ; is set to 2 (down) if b >= [d] and 0 (up) o/w
 DEFEnum compare_y_dir
 DEFEnum compare_out_major ; dominant direction
+DEFEnum compare_out_major_val
 DEFEnum compare_out_minor ; minor direction
+DEFEnum compare_out_minor_val
 
 
 ; compares (a,b) and ([c],[d])
@@ -175,9 +315,13 @@ compare_xy:
         jgt compare_xdom, [compare_x_val],[compare_y_val]
 compare_ydom:
         mov [compare_out_major], [compare_y_dir]
+        mov [compare_out_major_val], [compare_y_val]
         mov [compare_out_minor], [compare_x_dir]
+        mov [compare_out_minor_val], [compare_x_val]
         mov pc, [compare_rt]
 compare_xdom:
         mov [compare_out_major], [compare_x_dir]
+        mov [compare_out_major_val], [compare_x_val]
         mov [compare_out_minor], [compare_y_dir]
+        mov [compare_out_minor_val], [compare_y_val]
         mov pc, [compare_rt]

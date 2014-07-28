@@ -1,4 +1,8 @@
-;Do I have to init?
+DEF his_start 128
+DEF his_end 191 ; 128 + 63 works fine with and (for larger numbers)
+DEFENUM his_cur_x
+DEFENUM his_cur_y
+DEFENUM his_dir
 DEFEnum INIT_STATUS
         jeq init,[INIT_STATUS],0
 
@@ -6,6 +10,38 @@ DEFEnum INIT_STATUS
 DEFENUM move_x
 DEFENUM move_y
 main:
+history:
+        int 3
+        int 5
+        mov [neighbours_in_x], a
+        mov [neighbours_in_y], b
+        mov [neighbours_rt], history_return
+        mov pc,neighbours
+history_return:
+        jlt offend, [neighbours_out],3 ;better nop since I don't decide
+                                     ; anything
+        ; int 8
+        ; Same crossing as before?
+        jeq history_x, [his_cur_x], [neighbours_in_x]
+        mov pc,history_new
+history_x:
+        jeq history_old, [his_cur_y], [neighbours_in_y]
+history_new:
+        ; update crossing
+        mov [his_cur_x], [neighbours_in_x]
+        mov [his_cur_y], [neighbours_in_y]
+        ; wipe directions
+        mov [128],0
+        mov [129],0
+        mov [130],0
+        mov [131],0
+history_old:
+        int 3
+        int 6 ; get our dir in b
+        xor b, 2 ; reverse dir
+        add b, 128;
+        inc [b] ; don't go in this direction
+        ; DEBUG
 move:
         int 3
         int 6
@@ -26,7 +62,8 @@ panic:
         mov [move_y], b
         mov c,move_x
         mov d,move_y
-        int 3 int 5
+        int 3 
+        int 5
 prepare_compare:
         mov [compare_rt], move_return
         mov pc,comparecoordinates
@@ -39,23 +76,45 @@ move_return:
         mov [neighbours_rt], move_return2
         mov pc, neighbours
 move_return2:
+        ; DEBUG
+        ;mov a, [128]
+        ;mov b, [129]
+        ;mov c, [130]
+        ;mov d, [131]
+        ;mov e, [his_cur_x]
+        ;mov f, [his_cur_y]
+        ;int 8
         int 3
         int 6 ; b contains now our current direction
         xor b,2 ; b contains the forbidden direction
         ; can we go in the major direction?
         mov a,[compare_out_major]
+        mov c,a
+        add c,128
         ; skip if forbidden direction
         jeq move_minor,a,b
+        jgt move_minor,[c],1
         jgt move_final,[a],0
         ; can we go in the minor direction?
 move_minor:
         mov a,[compare_out_minor]
+        mov c,a
+        add c,128
         jeq move_rev_minor,a,b
+        jgt move_rev_minor,[c],1
         jgt move_final,[a],0
         ; can we go in the reverse minor direction?
 move_rev_minor:
         xor a,2
-        ; otherwise -> hand?
+        mov c,a
+        add c,128
+        jeq move_rev,a,b
+        jgt move_rev,[c],1
+        jgt move_final,[a],0
+move_rev:
+        mov a,[compare_out_major]
+        xor a,2
+        ; otherwise -> go away from target
 move_final:
         int 0
         hlt

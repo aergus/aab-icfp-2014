@@ -1,16 +1,91 @@
-;Do I have to init?
-DEFEnum INIT_STATUS
-        jeq init,[INIT_STATUS],0
+; check if lambdaman is at a crossing
+DEF his_start 128
+DEF his_end 191 ; 128 + 63 works fine with and (for larger numbers)
+DEFENUM his_cur
+DEFENUM not_init
+DEFENUM his_dir
+jeq init, [not_init],0
+
+jeq history_dir, [his_dir],1
+
+history:
+        int 1
+        mov [neighbours_in_x], a
+        mov [neighbours_in_y], b
+        mov [neighbours_rt], history_return
+        mov pc,neighbours
+history_return:
+        ; check if it is a crossing
+        jlt follow, [neighbours_out],3
+        ; It is a crossing
+        ; check if it is the same as the last one
+        mov a,[his_cur]
+        sub a,2
+        jeq history_x, [a],[neighbours_in_x]
+        mov pc, history_new
+history_x:
+        inc a
+        jeq history_dup, [a],[neighbours_in_y]
+history_new:
+        mov e,[his_cur]
+        mov [e], [neighbours_in_x]
+        inc e
+        mov [e], [neighbours_in_y]
+        add [his_cur],2
+history_wantdir:
+        mov [his_dir],1
+        mov pc,follow
+
+history_dup:
+        ; update only direction
+        add [his_cur],2
+        mov pc,history_wantdir 
+         
+history_dir:
+        ; assume that he moved
+        mov d,[his_cur]
+        dec d
+        mov c,d
+        dec c
+        int 1
+        mov [compare_rt], history_dir_return
+        mov pc,comparecoordinates
+history_dir_return:
+        mov e, [his_cur]
+        mov [e], [compare_out_major]
+        add [his_cur], 2
+        and [his_cur], his_end 
+        mov [his_dir], 0
+         
+follow:
+        ; get our coordinates in a and b
+        int 3
+        int 5
+        mov c, [his_cur]
+        mov d, c
+        add d, 1
+follow_loop:
+        jeq follow_x, [c],a
+        mov pc, follow_cont
+follow_x:
+        jeq follow_break, [d],b
+follow_cont:
+        add c, 4
+        and c, his_end
+        add d, 4
+        and d, his_end
+        jeq move, [his_cur],c
+        mov pc, follow_loop
+follow_break:
+        add d,1 
+        mov a,d
+        int 0
+        hlt
 
 ; move to lambda
 DEFENUM move_x
 DEFENUM move_y
-main:
 move:
-        int 3
-        int 6
-        jeq panic, a, 1
-normal:
         int 3
         int 5
         mov [move_x], a
@@ -18,53 +93,50 @@ normal:
         mov c,move_x
         mov d,move_y
         int 1
-        mov pc,prepare_compare
-panic: 
-        ; swap the coordinates -> inverse the logic
-        int 1
-        mov [move_x], a
-        mov [move_y], b
-        mov c,move_x
-        mov d,move_y
-        int 3 int 5
-prepare_compare:
         mov [compare_rt], move_return
         mov pc,comparecoordinates
 move_return:
-        ; take a look at our neighbours
-        int 3
-        int 5
-        mov [neighbours_in_x], a
-        mov [neighbours_in_y], b
-        mov [neighbours_rt], move_return2
-        mov pc, neighbours
-move_return2:
-        int 3
-        int 6 ; b contains now our current direction
-        xor b,2 ; b contains the forbidden direction
-        ; can we go in the major direction?
         mov a,[compare_out_major]
-        ; skip if forbidden direction
-        jeq move_minor,a,b
-        jgt move_final,[a],0
-        ; can we go in the minor direction?
-move_minor:
-        mov a,[compare_out_minor]
-        jeq move_rev_minor,a,b
-        jgt move_final,[a],0
-        ; can we go in the reverse minor direction?
-move_rev_minor:
-        xor a,2
-        ; otherwise -> hand?
-move_final:
         int 0
         hlt
 
-; Initialize some stuff?
-; 
+; hand rule
+; in 
+DEFENUM hand_in ;1 for left, -1 for right
+; init [neighbours_in_x], [neighbours_in_y]
+hand:
+        ; get our coordinates in a and b
+        int 3
+        int 5
+        ; save them in neighbours_in_x etc.
+        mov [neighbours_in_x], a
+        mov [neighbours_in_y], b
+        mov [neighbours_rt],hand_return
+        mov pc,neighbours
+hand_return:
+        ; save if it is a crossing
+        ; also direction (which is in b)
+        int 3
+        int 6
+        ; b now contains my current orientation
+        xor b,2 ; reverse b
+        mov a,b
+        mov c,[hand_in]
+        mul c,2
+hand_loop:
+        add a,[hand_in]
+        sub c,[hand_in]
+        and a,3 ; poor man's % 4
+        jeq hand_loop, [a],0 ; a wand? then try next direction
+        ; otherwise set direction
+        int 0
+        hlt
+
 init:
-        inc [INIT_STATUS]
-        mov pc, main
+        mov [not_init],1
+        mov [hand_in],1
+        mov [his_cur], his_start
+        mov pc, history
 
 ; in ([neighbours_in_x], [neighbours_in_y]) coordinate pair
 ; doesn't change neighbours_in_x and neighbours_in_y
@@ -106,7 +178,6 @@ neighbours_offreturn:
 neighbours_end:
         jlt neighbours_loop, [neighbours_counter], 3
         mov pc,[neighbours_rt]
-
 ; offset
 ; in c direction
 ;    h return

@@ -1,42 +1,54 @@
-_dfs =
-(\r dfs gameMap target dfsState ->
-    (IF (NIL (CAR dfsState))
-       (dfsState)
-       (IF (__and (== (CAR target) (CAR (CAR (CAR dfsState))))
-                  (== (CDR target) (CDR (CAR (CAR dfsState)))))
-           (dfsState)
-           (_dfs gameMap
-                 target
-                 (_updateState (CAR (CAR dfsState))
-                 (dfsState))))))
+-- _computeRoute :: (Int, Int) -> (Int, Int) -> [[Int]] -> Int
+_computeRoute =
+(\ start target map ->
+   (_findDirsR target
+               (_lambdaDFSR target ([] start) (CDR (_accAndModMap map start 8)))
+               0
+   )
+)
 
-_updateState =
-(\ gameMap cell state ->
-    (IF (__and (_cellFree gameMap (CAR cell) (- (CDR cell) 1))
-               (_notVisited state (CAR cell) (- (CDR cell) 1)))
-        (_addNewCell (CAR cell) (- (CDR cell) 1) cell state)
-        (IF (__and (_cellFree gameMap (+ (CAR cell) 1) (CDR cell))
-                   (_notVisited state (+ (CAR cell) 1) (CDR cell)))
-            (_addNewCell (+ (CAR cell) 1) (CDR cell) cell state)
-            (IF (__and (_cellFree gameMap (CAR cell) (+ (CDR cell) 1))
-                       (_notVisited state (CAR cell) (+ (CDR cell) 1)))
-                (_addNewCell (CAR cell) (- (CDR cell) 1) cell state)
-                (IF (__and (_cellFree gameMap (- (CAR cell) 1) (CDR cell))
-                           (_notVisited state (- (CAR cell) 1) (CDR cell)))
-                    (_addNewCell (- (CAR cell) 1) (CDR cell) cell state)
-                    (: (CAR (CDR state)) (CDR state)))))))
+-- _findDirsR :: (Int, Int) -> [[Int]] -> Int ->  Int
+_findDirsR =
+(\ target map dirs ->
+    { state <- (_accMatrix map target);
+      pos <- (_applyDir target (_mod (+ (- state 9) 2) 4));
+      next <- (_accMatrix map pos);
+      (IF (== next 8)
+          (: (- state 9) dirs)
+          (_findDirsR pos map (: (- state 9) dirs))
+      )
+    }
+)
 
-_cellFree =
-(\ gameMap x y -> (__elem (_getCell gameMap x y) ([] 1 2 3 4)))
+-- _lambdaDFSR :: (Int, Int) -> [(Int, Int)] -> [[Int]] -> Int
+_lambdaDFSR =
+(\ target stack map ->
+  (IF (NIL stack)
+      map
+      (IF (_eqPair target (CAR stack))
+          map
+          { cur <- (CAR stack);
+            pr <- (_handleDirR map cur 3);
+            newStack <- (IF (== -1 (CAR pr))
+                            (CDR stack)
+                            (: (_applyDir cur (CAR pr)) stack)
+                        );
+            (_lambdaDFSR target newStack (CDR pr))
+          }
+      )
+  )
+)
 
-_notVisited =
-(\ state x y -> (not (__elem (: x y) (CDR (CAR state)))))
-
-_addNewCell =
-(\ gameMap y oldCell state ->
-    (: (: (: x y) (CAR state))
-       (: (: (: x y) (CDR (CAR state)))
-          (: (: oldCell (: x y)) (CDR (CDR state))))))
-
-_getCell =
-(\ gameMap x y -> (__accList (__accList gameMap x) y))
+-- _handleDirR :: [[Int]] -> (Int, Int) -> Int -> Int
+_handleDirR =
+(\ map pos k ->
+   (IF (== -1 k)
+       (: -1 map)
+       { pr <- (_accAndModMap map (_applyDir pos k) (+ k 9));
+         (IF (_and (CAR pr) (<= (CAR pr) 6))
+             (: k (CDR pr))
+             (_handleDirR (CDR pr) pos (- k 1))
+         )
+       }
+   )
+)
