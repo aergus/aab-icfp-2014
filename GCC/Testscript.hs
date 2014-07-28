@@ -12,6 +12,6 @@ testgcc = do args <- getArgs
              code <- readFile (args !! 0)
              either
                 (putStrLn.("ERROR: "++).show)
-                (\x -> (runDebug (resolveIdentifier x) []) >> (return ()))
+                (\x -> (runDebug x []) >> (return ()))
                 (parseGcc code)
  
