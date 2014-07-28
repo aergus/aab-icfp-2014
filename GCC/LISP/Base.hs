@@ -38,7 +38,6 @@ transform (main,defs) = let l = length defs in
                          (foldr (<+>) (toCode $ [DUM l]++[LDF s | s <- labels]++[RAP l,RTN])
                           [floatAt s $ (tr (split i rest) (ctxt,2) exp)<+>(toCode [RTN])| (s,exp,i) <- zip3 labels ((map snd defs)) [1..]])
                           <+> (floatAt (labels !! l) $ (tr (split l rest) (ctxt,1) main)<+>(toCode [RTN])) 
--- TRIPLE-CHECK LEVELS HERE! 
 
 data Expression = App Expression [Expression]
             | Name String
