@@ -24,7 +24,7 @@ history:
         mov [neighbours_rt], history_return
         mov pc,neighbours
 history_return:
-        jlt offend, [neighbours_out],3 ;better nop since I don't decide
+        jlt gen_entropy, [neighbours_out],3 ;better nop since I don't decide
                                      ; anything
         ; int 8
         ; Same crossing as before?
@@ -155,6 +155,7 @@ move_return2:
         ; e (random)
         mov a,0
         mov c,weights
+        mov d,his_start
         mov e,entropy
 n_loop:
         ; forbidden?
@@ -203,6 +204,9 @@ no_max:
 init:
         inc [INIT_STATUS]
         mov pc, main
+
+gen_entropy:
+        hlt
 
 ; in ([neighbours_in_x], [neighbours_in_y]) coordinate pair
 ; doesn't change neighbours_in_x and neighbours_in_y
