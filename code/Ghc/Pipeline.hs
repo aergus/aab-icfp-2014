@@ -17,10 +17,12 @@ import Data.Word
 pipeline :: String -> String
 pipeline = prettyProgram. instrs . (\(Right x) -> resolveIdentifier x) . parseGhc
 
-compileFromFile :: String -> IO ()
+compileFromFile :: String -> IO String
 compileFromFile f = do
         x <- readFile f
-        either print (putStr . prettyProgram. instrs .resolveIdentifier) (parseGhc x)
+        case (parseGhc x) of
+                (Left y) -> return $ show y
+                (Right y) -> return $ prettyProgram $ instrs $ resolveIdentifier $ y
 
 debugFromFile :: String -> IO ()
 debugFromFile f = do

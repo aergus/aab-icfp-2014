@@ -1,0 +1,251 @@
+JEQ 189, [252], 0
+INT 3
+INT 5
+MOV [251], a
+MOV [229], a
+MOV [250], b
+MOV [228], b
+MOV [222], 10
+MOV [227], 0
+MOV pc, 193
+MOV [249], [223]
+INT 3
+INT 6
+MOV [247], a
+MOV [248], b
+MOV a, [246]
+MOV b, [245]
+MOV c, [244]
+INT 8
+MOV c, 251
+MOV d, 250
+INT 1
+MOV [238], a
+MOV [237], b
+MOV [212], 26
+MOV pc, 226
+MOV [236], [216]
+MOV [235], [214]
+MOV [234], [215]
+MOV a, [246]
+MOV b, [245]
+MOV [212], 33
+MOV pc, 226
+MOV [240], [216]
+MOV [239], [214]
+MOV [241], [215]
+JEQ 68, [247], 1
+JEQ 40, [244], 0
+JEQ 50, [244], 1
+JEQ 62, [244], 2
+INT 3
+INT 5
+INT 7
+JEQ 46, a, 3
+JEQ 46, a, 4
+MOV pc, 69
+MOV [246], [251]
+MOV [245], [250]
+MOV [244], 1
+MOV pc, 60
+MOV a, [246]
+MOV b, [245]
+INT 7
+INT 8
+JEQ 60, a, 3
+JEQ 60, a, 4
+MOV [246], 0
+MOV [245], 1
+MOV [244], 0
+MOV pc, 40
+INT 8
+MOV pc, 174
+MOV a, [246]
+MOV b, [245]
+INT 7
+JEQ 40, a, 3
+JEQ 40, a, 4
+MOV pc, 56
+MOV [244], 2
+JLT 192, [249], 3
+JEQ 72, [255], [251]
+MOV pc, 73
+JEQ 79, [254], [250]
+MOV [255], [251]
+MOV [254], [250]
+MOV [128], 1
+MOV [129], 1
+MOV [130], 1
+MOV [131], 1
+INT 3
+INT 6
+XOR b, 2
+ADD b, 128
+INC [b]
+JEQ 103, [247], 1
+JEQ 94, [244], 2
+INT 3
+INT 5
+MOV [243], a
+MOV [242], b
+MOV c, 243
+MOV d, 242
+INT 1
+MOV pc, 110
+INT 3
+INT 5
+MOV [243], a
+MOV [242], b
+MOV c, 243
+MOV d, 242
+MOV a, [246]
+MOV b, [245]
+MOV pc, 110
+INT 1
+MOV [243], a
+MOV [242], b
+MOV c, 243
+MOV d, 242
+INT 3
+INT 5
+MOV [212], 112
+MOV pc, 226
+MOV a, [216]
+ADD a, 64
+MOV [a], 100
+XOR a, 2
+MOV [a], 50
+MOV a, [214]
+ADD a, 64
+MOV [a], 90
+XOR a, 2
+MOV [a], 70
+INT 3
+INT 5
+MOV [243], a
+MOV [242], b
+MOV c, 243
+MOV d, 242
+MOV [212], 134
+MOV e, 0
+MOV a, e
+MOV b, 0
+INT 5
+MOV pc, 226
+MOV a, [216]
+JEQ 140, [215], 0
+ADD a, 64
+MOV f, 20
+DIV f, [215]
+SUB [a], f
+INC e
+JGT 130, b, 0
+INT 3
+INT 6
+XOR b, 2
+MOV a, 0
+MOV c, 64
+MOV d, 128
+MOV e, 192
+JEQ 155, a, b
+JEQ 155, [a], 0
+DIV [c], [d]
+DIV [c], [d]
+ADD [c], [e]
+MOV pc, 156
+MOV [c], 0
+INC a
+INC c
+INC d
+INC e
+JLT 149, a, 4
+MOV a, 0
+MOV b, 0
+MOV c, 64
+MOV d, 0
+JLT 168, [c], b
+MOV b, [c]
+MOV a, d
+INC d
+INC c
+JLT 165, d, 4
+INT 8
+INT 0
+HLT
+INT 8
+MOV b, [248]
+XOR b, 2
+MOV a, b
+MOV c, [231]
+MUL c, 2
+ADD a, [231]
+SUB c, [231]
+AND a, 3
+JEQ 180, [a], 0
+ADD [230], c
+MOV g, [230]
+INT 8
+INT 0
+HLT
+INC [252]
+MOV [231], 1
+MOV pc, 1
+HLT
+MOV e, 226
+MOV f, 225
+MOV [221], 204
+MOV d, [227]
+MOV c, 217
+MOV [223], 0
+MOV [224], 255
+INC [224]
+MOV [226], [229]
+MOV [225], [228]
+MOV pc, c
+ADD c, 2
+MOV a, [226]
+MOV b, [225]
+INT 7
+MOV [d], a
+INC d
+JEQ 212, a, 0
+INC [223]
+JLT 200, [224], 3
+MOV pc, [222]
+MUL c, 2
+ADD c, 217
+MOV pc, c
+DEC [f]
+MOV pc, [221]
+INC [e]
+MOV pc, [221]
+INC [f]
+MOV pc, [221]
+DEC [e]
+MOV pc, [221]
+HLT
+MOV [220], a
+SUB [220], [c]
+MOV [218], b
+SUB [218], [d]
+JLT 233, a, [c]
+MOV [219], 1
+MOV pc, 235
+MUL [220], 255
+MOV [219], 3
+JLT 238, b, [d]
+MOV [217], 2
+MOV pc, 240
+MUL [218], 255
+MOV [217], 0
+JGT 246, [220], [218]
+MOV [216], [217]
+MOV [215], [218]
+MOV [214], [219]
+MOV [213], [220]
+MOV pc, [212]
+MOV [216], [219]
+MOV [215], [220]
+MOV [214], [217]
+MOV [213], [218]
+MOV pc, [212]

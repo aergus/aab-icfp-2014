@@ -23,6 +23,9 @@ DEFENUM camp_x
 DEFENUM camp_y
 DEFENUM camp_status
 
+DEFENUM move_x
+DEFENUM move_y
+
 DEFENUM camp_major_val
 DEFENUM camp_major
 DEFENUM camp_minor
