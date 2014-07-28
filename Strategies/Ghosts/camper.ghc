@@ -15,27 +15,103 @@ DEFEnum INIT_STATUS
 ; move to lambda
 DEFENUM move_x
 DEFENUM move_y
+        ; Prepare local information
+DEFENUM cur_x
+DEFENUM cur_y
+DEFENUM cur_crossing
+DEFENUM cur_dir
+DEFENUM cur_vitality
+
+DEFENUM camp_x
+DEFENUM camp_y
+DEFENUM camp_status
+; 0 - haven't found anything yet
+; 1 - found and in loop
+; 2 - found but far away
+
 main:
-history:
         int 3
         int 5
+        mov [cur_x], a
         mov [neighbours_in_x], a
+        mov [cur_y], b
         mov [neighbours_in_y], b
-        mov [neighbours_rt], history_return
+        mov [neighbours_rt], cur_return
+        mov [neighbours_in_array], 0
         mov pc,neighbours
+cur_return:
+        mov [cur_crossing], [neighbours_out] 
+        ; save vitality/dir
+        int 3
+        int 6
+        mov [cur_vitality], a
+        mov [cur_dir], b
+
+camp:
+        jeq flee, [cur_vitality], 1 ; normal strat for fright but set
+                                    ; go_back
+
+        jeq camp_still_there, [camp_status], 1
+        jeq camp_go_back, [camp_status], 2
+
+; look if we are on something
+camp_0:
+        int 3
+        int 5
+        int 7
+        jeq camp_found, a,3
+        jeq camp_found, a,4
+        ; found nothing
+        ; go to main strat
+        mov pc,history
+camp_found:
+        mov [camp_x], [cur_x]
+        mov [camp_y], [cur_y]
+        mov [camp_status], 1
+        mov pc, camp_1
+
+camp_still_there:
+        mov a, [camp_x]
+        mov b, [camp_y]
+        int 7
+        jeq camp_1, a,3
+        jeq camp_1, a,4
+        ; nope not there
+camp_vanished:
+        mov [camp_x], 0 ; erase
+        mov [camp_y], 1 ; erase
+        mov [camp_status],0
+        mov pc, camp_0
+camp_1:
+        ; is there
+        ; hand strat
+        ; (maybe optimize direction
+        mov pc, hand
+camp_go_back:
+        ; still there?
+        mov a, [camp_x]
+        mov b, [camp_y]
+        int 7
+        jeq camp_0, a,3 ; search (but have camp_status 2 still set)
+        jeq camp_0, a,4
+        mov pc, camp_vanished
+        
+flee:
+        mov [camp_status], 2
+history:
 history_return:
-        jlt gen_entropy, [neighbours_out],3 ;better nop since I don't decide
+        jlt gen_entropy, [cur_crossing],3 ;better nop since I don't decide
                                      ; anything
         ; int 8
         ; Same crossing as before?
-        jeq history_x, [his_cur_x], [neighbours_in_x]
+        jeq history_x, [his_cur_x], [cur_x]
         mov pc,history_new
 history_x:
-        jeq history_old, [his_cur_y], [neighbours_in_y]
+        jeq history_old, [his_cur_y], [cur_y]
 history_new:
         ; update crossing
-        mov [his_cur_x], [neighbours_in_x]
-        mov [his_cur_y], [neighbours_in_y]
+        mov [his_cur_x], [cur_x]
+        mov [his_cur_y], [cur_y]
         ; wipe directions
         mov [128],1
         mov [129],1
@@ -48,10 +124,11 @@ history_old:
         add b, 128;
         inc [b] ; don't go in this direction
         ; DEBUG
+        ; Decide the target
+        ; TODO Refactor
 move:
-        int 3
-        int 6
-        jeq panic, a, 1
+        jeq panic, [cur_vitality], 1
+        jeq camp_target, [camp_status], 2
 normal:
         int 3
         int 5
@@ -60,6 +137,16 @@ normal:
         mov c,move_x
         mov d,move_y
         int 1
+        mov pc,prepare_compare
+camp_target:
+        int 3
+        int 5
+        mov [move_x], a
+        mov [move_y], b
+        mov c,move_x
+        mov d,move_y
+        mov a, [camp_x]
+        mov b, [camp_y]
         mov pc,prepare_compare
 panic: 
         ; swap the coordinates -> inverse the logic
@@ -74,7 +161,6 @@ prepare_compare:
         mov [compare_rt], move_return
         mov pc,comparecoordinates
 move_return:
-        ; take a look at our neighbours
         ; weight  
         mov a,[compare_out_major]
         add a, weights
@@ -86,6 +172,7 @@ move_return:
         mov [a],weights_minor
         xor a,2
         mov [a],weights_minor_rev
+        {-
         ; DEBUG
         mov a, [128]
         mov b, [129]
@@ -96,6 +183,7 @@ move_return:
         mov g, [66]
         mov h, [67]
         int 8
+        -}
 scatter:
         ; we assume there are 4 ghosts
         int 3
@@ -130,14 +218,6 @@ scatter_continue:
         mov g, [66]
         mov h, [67]
         int 8
-
-compute_neighbours:
-        int 3
-        int 5
-        mov [neighbours_in_x], a
-        mov [neighbours_in_y], b
-        mov [neighbours_rt], move_return2
-        mov pc, neighbours
 move_return2:
         ; DEBUG
         ;mov a, [128]
@@ -199,10 +279,45 @@ no_max:
         int 0
         hlt
 
+Defenum hand_in
+Defenum winding
+
+; hand
+hand:
+        ; jeq leave_mode, [leave],1
+        ; save if it is a crossing
+        ; also direction (which is in b)
+        ; int 3
+        ; int 6
+        ; jlt hand_nocrossing, [neighbours_out],3
+        ; mov [last_crossing_x], [neighbours_in_x]
+        ; mov [last_crossing_y], [neighbours_in_y]
+hand_nocrossing:
+        ; b now contains my current orientation
+        xor b,2 ; reverse b
+        mov a,b
+        mov c,[hand_in]
+        mul c,2
+hand_loop:
+        add a,[hand_in]
+        sub c,[hand_in]
+        and a,3 ; poor man's % 4
+        jeq hand_loop, [a],0 ; a wand? then try next direction
+        ; otherwise set direction
+        ; update winding
+        add [winding],c
+        mov g,[winding]
+        int 8
+        ; jeq hand_leave, [winding], 0
+        int 0
+        hlt
+
+
 ; Initialize some stuff?
 ; 
 init:
         inc [INIT_STATUS]
+        mov [hand_in],1
         mov pc, main
 
 gen_entropy:
@@ -212,13 +327,14 @@ gen_entropy:
 ; doesn't change neighbours_in_x and neighbours_in_y
 DEFENUM neighbours_in_x
 DEFENUM neighbours_in_y
+DEFENUM neighbours_in_array
 ;uses
-; a b c e f 
+; a b c d e f 
 DEFENUM neighbours_x
 DEFENUM neighbours_y
 DEFENUM neighbours_counter ; as a counter
 ; out 
-; [0] .. [3] contain the map information in this direction
+; [neighbours_in_array] .. [neighbours_in_array+3] contain the map information in this direction
 DEFENUM neighbours_out ; number of neighbours
 ; jumps back to
 DEFENUM neighbours_rt
@@ -228,6 +344,7 @@ neighbours:
         mov e,neighbours_x
         mov f,neighbours_y
         mov [offset_rt],neighbours_offreturn
+        mov d,[neighbours_in_array]
         mov c,offup
         mov [neighbours_out],0
         mov [neighbours_counter],255
@@ -241,8 +358,8 @@ neighbours_offreturn:
         mov a,[neighbours_x]
         mov b,[neighbours_y]
         int 7
-        mov b,[neighbours_counter]
-        mov [b],a
+        mov [d],a
+        inc d
         jeq neighbours_end, a, 0
         inc [neighbours_out]
 neighbours_end:
