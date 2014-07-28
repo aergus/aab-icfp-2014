@@ -13,7 +13,11 @@ main =
              1
              (IF (_not (== (CAR (CDR ai)) (_myLives world)))
                  1
-                 (_ghostsAhead (_allGhosts world) (_myPos world) (CAR ai))
+                 (_ghostsAhead (_myVitality world)
+                               (_allGhosts world)
+                               (_myPos world)
+                               (CAR ai)
+                 )
              )
          )
          (_generateRoute ai world)

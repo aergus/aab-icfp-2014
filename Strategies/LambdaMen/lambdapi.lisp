@@ -19,6 +19,12 @@ _fruitState =
   (CAR (CDR (CDR (CDR world))))
 )
 
+-- _myVitality :: WorldState -> Int
+_myVitality =
+(\ world ->
+  (CAR (CAR (CDR world)))
+)
+
 -- _myPos :: WorldState -> (Int, Int)
 _myPos =
 (\ world ->
@@ -59,19 +65,23 @@ _ghostsClear =
 
 -- _ghostsAhead :: [Ghost] -> (Int, Int) -> [Int] -> Int
 _ghostsAhead =
-(\ ghosts pos route ->
+(\ vit ghosts pos route ->
    (IF (NIL ghosts)
        0
        { g <- (CAR ghosts);
-         (IF (_eqPair (CAR (CDR g)) (_applyDir pos (CAR route)))
+         (IF (_and (_eqPair (CAR (CDR g)) (_applyDir pos (CAR route)))
+                   (<= vit 137)
+             )
              1
              { r <- (CDR route);
                (IF (IF (_not (NIL r))
-                       (_eqPair (CAR (CDR g)) (_applyDir pos (CAR r)))
+                       (_and (_eqPair (CAR (CDR g)) (_applyDir pos (CAR r)))
+                             (<= vit 274)
+                       )
                        0
                    )
                    1
-                   (_ghostsAhead (CDR ghosts) pos route)
+                   (_ghostsAhead vit (CDR ghosts) pos route)
                )
              }
          )
