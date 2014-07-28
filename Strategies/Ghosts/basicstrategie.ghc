@@ -1,59 +1,183 @@
 ;Do I have to init?
-        DEF INIT_STATUS 255
-        DEF UP 0
-        DEF RIGHT 1
-        DEF DOWN 2
-        DEF LEFT 3
+DEFEnum INIT_STATUS
         jeq init,[INIT_STATUS],0
+
+; move to lambda
+DEFENUM move_x
+DEFENUM move_y
 main:
-
-; Move to lambda man
-comparecoordinates:
-int 3 ; Get our ghost index in A	
-int 5 ; Get our coordinates
-; move them to c and d
-mov c,a
-mov d,b
-; Get lambda-man's coordinates
-int 1
-; Which difference is bigger?
-mov e,a
-sub e,c
-mul e,e ; e = dx^2
-mov f,b
-sub f,d
-mul f,f ; f = dy^2
-JLT ydiv,e,f
-xdiv:
-JGT compare_right, a,c
-compare_left:
-mov a,3
-mov pc,return
-compare_right:
-mov a,1
-mov pc,return
-ydiv:
-JGT compare_down, b,d
-compare_up:
-mov a,0
-mov pc,return
-compare_down:
-mov a,2
-mov pc,return
-
-return:
-;Gesund?
-mov c,a
-int 3
-int 6
-mul a,2 ; 1 -> 2 reverses the direction via xor
-xor a,c
-and a,3
-int 0
-hlt
+move:
+        int 3
+        int 6
+        jeq panic, a, 1
+normal:
+        int 3
+        int 5
+        mov [move_x], a
+        mov [move_y], b
+        mov c,move_x
+        mov d,move_y
+        int 1
+        mov pc,prepare_compare
+panic: 
+        ; swap the coordinates -> inverse the logic
+        int 1
+        mov [move_x], a
+        mov [move_y], b
+        mov c,move_x
+        mov d,move_y
+        int 3 int 5
+prepare_compare:
+        mov [compare_rt], move_return
+        mov pc,comparecoordinates
+move_return:
+        ; take a look at our neighbours
+        int 3
+        int 5
+        mov [neighbours_in_x], a
+        mov [neighbours_in_y], b
+        mov [neighbours_rt], move_return2
+        mov pc, neighbours
+move_return2:
+        int 3
+        int 6 ; b contains now our current direction
+        xor b,2 ; b contains the forbidden direction
+        ; can we go in the major direction?
+        mov a,[compare_out_major]
+        ; skip if forbidden direction
+        jeq move_minor,a,b
+        jgt move_final,[a],0
+        ; can we go in the minor direction?
+move_minor:
+        mov a,[compare_out_minor]
+        jeq move_rev_minor,a,b
+        jgt move_final,[a],0
+        ; can we go in the reverse minor direction?
+move_rev_minor:
+        xor a,2
+        ; otherwise -> hand?
+move_final:
+        int 0
+        hlt
 
 ; Initialize some stuff?
 ; 
 init:
         inc [INIT_STATUS]
         mov pc, main
+
+; in ([neighbours_in_x], [neighbours_in_y]) coordinate pair
+; doesn't change neighbours_in_x and neighbours_in_y
+DEFENUM neighbours_in_x
+DEFENUM neighbours_in_y
+;uses
+; a b c e f 
+DEFENUM neighbours_x
+DEFENUM neighbours_y
+DEFENUM neighbours_counter ; as a counter
+; out 
+; [0] .. [3] contain the map information in this direction
+DEFENUM neighbours_out ; number of neighbours
+; jumps back to
+DEFENUM neighbours_rt
+
+neighbours:
+        ; set e f h for offset
+        mov e,neighbours_x
+        mov f,neighbours_y
+        mov [offset_rt],neighbours_offreturn
+        mov c,offup
+        mov [neighbours_out],0
+        mov [neighbours_counter],255
+neighbours_loop:
+        inc [neighbours_counter]
+        mov [neighbours_x],[neighbours_in_x]
+        mov [neighbours_y],[neighbours_in_y]
+        mov pc,c
+neighbours_offreturn:
+        add c,2
+        mov a,[neighbours_x]
+        mov b,[neighbours_y]
+        int 7
+        mov b,[neighbours_counter]
+        mov [b],a
+        jeq neighbours_end, a, 0
+        inc [neighbours_out]
+neighbours_end:
+        jlt neighbours_loop, [neighbours_counter], 3
+        mov pc,[neighbours_rt]
+
+; offset
+; in c direction
+;    h return
+; out add to [e] and [f] offset 
+; keeps e,f,h const
+; jumps to
+DEFENUM offset_rt
+; tains c
+
+offset:
+mul c,2
+add c,offup
+mov pc,c
+offup:
+        dec [f] ; go up
+        mov pc,[offset_rt]
+offright:
+        inc [e] ; go right
+        mov pc,[offset_rt]
+offdown:
+        inc [f] ; go down
+        mov pc,[offset_rt]
+offleft:
+        dec [e] ; go left
+        mov pc,[offset_rt]
+offend:
+        hlt
+
+DEFEnum compare_x_val
+DEFEnum compare_x_dir ; is set to 1 (right) if a >= [c] and 3 (left)
+                      ; otherwise
+DEFEnum compare_y_val ; is set to 2 (down) if b >= [d] and 0 (up) o/w
+DEFEnum compare_y_dir
+DEFEnum compare_out_major ; dominant direction
+DEFEnum compare_out_minor ; minor direction
+
+
+; compares (a,b) and ([c],[d])
+; (a, b) is often set via interrupts
+; saves the result in compare_out
+; jumps to
+DEFEnum compare_rt
+; modifies only private stuff
+comparecoordinates:
+        ; Which difference is bigger?
+        mov [compare_x_val],a
+        sub [compare_x_val],[c]
+        mov [compare_y_val],b
+        sub [compare_y_val],[d]
+        jlt compare_left, a,[c] ; then a - [c] is negative
+compare_right:
+        mov [compare_x_dir],1
+        mov pc, compare_y
+compare_left:
+        mul [compare_x_val],255
+        mov [compare_x_dir],3
+compare_y:
+        jlt compare_up, b,[d]
+compare_down:
+        mov [compare_y_dir],2
+        mov pc, compare_xy
+compare_up:
+        mul [compare_y_val],255
+        mov [compare_y_dir],0
+compare_xy:
+        jgt compare_xdom, [compare_x_val],[compare_y_val]
+compare_ydom:
+        mov [compare_out_major], [compare_y_dir]
+        mov [compare_out_minor], [compare_x_dir]
+        mov pc, [compare_rt]
+compare_xdom:
+        mov [compare_out_major], [compare_x_dir]
+        mov [compare_out_minor], [compare_y_dir]
+        mov pc, [compare_rt]

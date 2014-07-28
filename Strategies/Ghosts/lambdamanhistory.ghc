@@ -83,13 +83,15 @@ follow_break:
         hlt
 
 ; move to lambda
+DEFENUM move_x
+DEFENUM move_y
 move:
         int 3
         int 5
-        mov [neighbours_in_x], a
-        mov [neighbours_in_y], b
-        mov c,neighbours_in_x
-        mov d,neighbours_in_y
+        mov [move_x], a
+        mov [move_y], b
+        mov c,move_x
+        mov d,move_y
         int 1
         mov [compare_rt], move_return
         mov pc,comparecoordinates
