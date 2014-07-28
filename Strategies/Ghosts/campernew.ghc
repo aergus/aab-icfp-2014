@@ -173,6 +173,7 @@ move:
         jeq panic, [cur_vitality], 1
         ; no panic
         mov c,0
+panic:
         mov [target_major], [lambdaman_major]
         xor [target_major], c
         mov [target_minor], [lambdaman_major]
@@ -210,10 +211,10 @@ scatter:
         ; now we don't
         int 3
         int 5
-        mov [move_x], a
-        mov [move_y], b
-        mov c,move_x
-        mov d,move_y
+        mov [cur_x], a
+        mov [cur_y], b
+        mov c,cur_x
+        mov d,cur_y
         mov [compare_rt], scatter_return
         ; save my cooridinates in [c],[d]
         mov e,0
