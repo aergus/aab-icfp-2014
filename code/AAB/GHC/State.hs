@@ -1,6 +1,6 @@
-module Ghc.State where
+module AAB.GHC.State where
 
-import Ghc.Types
+import AAB.GHC.Types
 import Data.Word
 import Data.Bits
 import Control.Monad

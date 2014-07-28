@@ -1,8 +1,8 @@
-module GCC.State where
+module AAB.GCC.State where
 
 import Data.Int
-import GCC.Types
-import GCC.EnvFrame
+import AAB.GCC.Types
+import AAB.GCC.EnvFrame
 import qualified Data.IntMap as M
 
 data CodeMap = CodeMap {code :: M.IntMap (GccInstr Int32), stop :: Bool, cp :: Key} deriving (Show)

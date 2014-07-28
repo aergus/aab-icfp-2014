@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 
-module Ghc.Types where
+module AAB.GHC.Types where
 
 import Data.Word
 import Data.Bits

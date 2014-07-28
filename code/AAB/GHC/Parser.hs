@@ -1,6 +1,6 @@
-module Ghc.Parser where
+module AAB.GHC.Parser where
 
-import Ghc.Types
+import AAB.GHC.Types
 
 import Text.Parsec.Token
 import Text.ParserCombinators.Parsec

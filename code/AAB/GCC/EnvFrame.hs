@@ -1,6 +1,6 @@
-module GCC.EnvFrame where
+module AAB.GCC.EnvFrame where
 
-import GCC.Types
+import AAB.GCC.Types
 import qualified Data.IntMap as M
 import Data.Int
 import Data.List

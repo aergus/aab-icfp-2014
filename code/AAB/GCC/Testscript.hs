@@ -1,9 +1,9 @@
 {- test GCC code -}
 
-module GCC.Testscript where
+module AAB.GCC.Testscript where
 
-import GCC.Base
-import GCC.Parser
+import AAB.GCC.Base
+import AAB.GCC.Parser
 
 import System.Environment
 

@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 
-module GCC.Types where
+module AAB.GCC.Types where
 import qualified Data.IntMap as M
 import Data.Int
 

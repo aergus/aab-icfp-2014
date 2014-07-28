@@ -1,7 +1,7 @@
-module Game.Test where
+module AAB.Game.Test where
 
-import Game.Types (GameMap (..), Element (..), GInt)
-import Game.Parser (parseGameMap)
+import AAB.Game.Types (GameMap (..), Element (..), GInt)
+import AAB.Game.Parser (parseGameMap)
 
 import Data.Ix
 import Data.Word

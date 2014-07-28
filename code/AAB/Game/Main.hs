@@ -1,9 +1,9 @@
-{- game logic implementation -}
+{- game logic implementation (uses old types, hence not even correctly typed) -}
 
-module Game.Main where
+module AAB.Game.Main where
 
-import Game.Dummy
-import Game.Types
+import AAB.Game.Dummy
+import AAB.Game.Types
 
 import Control.Monad
 import Control.Monad.ST

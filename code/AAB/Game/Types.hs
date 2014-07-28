@@ -1,8 +1,8 @@
 {- data types for game logic -}
 
-module Game.Types where
+module AAB.Game.Types where
 
-import Game.Dummy
+import AAB.Game.Dummy
 
 import Data.Array.ST
 import Data.Int

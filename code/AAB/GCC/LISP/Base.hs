@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
-module GCC.LISP.Base where
+module AAB.GCC.LISP.Base where
 
 import qualified Data.Map as M
 import Data.List

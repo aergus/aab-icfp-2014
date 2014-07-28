@@ -1,9 +1,9 @@
 {- compile LambdaLisp to GCC code -}
 
-module GCC.LISP.LL2GCC where
+module AAB.GCC.LISP.LL2GCC where
 
-import GCC.LISP.Base
-import GCC.LISP.Parser
+import AAB.GCC.LISP.Base
+import AAB.GCC.LISP.Parser
 
 import System.Environment
 

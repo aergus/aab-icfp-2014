@@ -1,6 +1,6 @@
-module Ghc.Printer where
+module AAB.GHC.Printer where
 
-import Ghc.Types
+import AAB.GHC.Types
 
 prettyReg :: Register -> String
 prettyReg x = (map (:[]) ['a'..'h']++["pc"]) !! (fromEnum x)

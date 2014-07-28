@@ -1,9 +1,9 @@
-module GCC.Base where
+module AAB.GCC.Base where
 
-import GCC.Step
-import GCC.State
-import GCC.Types
-import GCC.EnvFrame
+import AAB.GCC.Step
+import AAB.GCC.State
+import AAB.GCC.Types
+import AAB.GCC.EnvFrame
 import qualified Data.IntMap as M
 import Data.Int
 

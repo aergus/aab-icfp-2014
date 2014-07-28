@@ -1,7 +1,7 @@
-module GCC.Test where
+module AAB.GCC.Test where
 
-import GCC.Step
-import GCC.Types
+import AAB.GCC.Step
+import AAB.GCC.Types
 import qualified Data.IntMap as M
 import Data.List
 

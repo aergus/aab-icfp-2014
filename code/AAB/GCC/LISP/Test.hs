@@ -1,7 +1,7 @@
-module GCC.LISP.Test where
+module AAB.GCC.LISP.Test where
 
-import Game.Types (GameMap (..))
-import Game.Test
+import AAB.Game.Types (GameMap (..))
+import AAB.Game.Test
 
 testLLMap :: String
 testLLMap = mapToLLMap testMap

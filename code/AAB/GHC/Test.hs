@@ -1,8 +1,8 @@
-module Ghc.Test where
+module AAB.GHC.Test where
 
-import Game.Types (GameMap (..), Element (..))
-import Game.Test
-import Ghc.Types (GhostWorldView (..))
+import AAB.Game.Types (GameMap (..), Element (..))
+import AAB.Game.Test
+import AAB.GHC.Types (GhostWorldView (..))
 
 import Data.Array
 

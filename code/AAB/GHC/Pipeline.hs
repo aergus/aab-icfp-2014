@@ -1,7 +1,9 @@
-import Ghc.Parser
-import Ghc.Printer
-import Ghc.Types
-import Ghc.State
+module AAB.GHC.Pipeline where
+
+import AAB.GHC.Parser
+import AAB.GHC.Printer
+import AAB.GHC.Types
+import AAB.GHC.State
 import Control.Monad
 import Data.STRef
 import Control.Monad.ST
@@ -11,7 +13,7 @@ import Data.List
 
 import Text.Parsec.Pos
 
-import Ghc.Test
+import AAB.GHC.Test
 import Data.Word
 
 pipeline :: String -> String

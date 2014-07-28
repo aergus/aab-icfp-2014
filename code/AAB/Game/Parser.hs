@@ -1,8 +1,8 @@
 {- LambdaMan game map parser -}
 
-module Game.Parser where
+module AAB.Game.Parser where
 
-import Game.Types (GameMap (..), Element (..))
+import AAB.Game.Types (GameMap (..), Element (..))
 
 import Text.ParserCombinators.Parsec
 

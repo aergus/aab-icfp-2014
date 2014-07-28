@@ -1,4 +1,4 @@
-module GCC.LISP.Parser where
+module AAB.GCC.LISP.Parser where
 
 import Text.Parsec.Token
 import Text.ParserCombinators.Parsec
@@ -7,7 +7,7 @@ import Data.Int
 import Data.List
 import qualified Data.Map as M
 
-import GCC.LISP.Base
+import AAB.GCC.LISP.Base
 {-
 data Expression = App Expression [Expression]
             | Name String

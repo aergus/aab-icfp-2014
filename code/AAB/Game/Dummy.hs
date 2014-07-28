@@ -1,6 +1,6 @@
 {- dummy declaration for game logic implementation -}
 
-module Game.Dummy where
+module AAB.Game.Dummy where
 
 data LambdaManCode
 data GhostCode

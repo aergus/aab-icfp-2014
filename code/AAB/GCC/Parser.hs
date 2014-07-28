@@ -1,6 +1,6 @@
-module GCC.Parser where
+module AAB.GCC.Parser where
 
-import GCC.Types
+import AAB.GCC.Types
 
 import Text.Parsec.Token
 import Text.ParserCombinators.Parsec
