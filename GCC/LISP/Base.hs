@@ -215,7 +215,7 @@ floatAt l = M.mapKeys (\x -> if x == "" then l else x)
 type Context = (M.Map String (Int,Int,Bool),Int) --how deep is each variable, IS it coded as a zero-argument function or , and how deep are we?
 
 firstcontext :: Context
-firstcontext = (M.fromList [("WORLDSTATE0",(0,0,False)),("GHOSTCODE",(0,1,False))],0) --the two arguments of main
+firstcontext = (M.fromList [("WORLDSTATE",(0,0,False)),("GHOSTCODE",(0,1,False))],0) --the two arguments of main
 
 tr :: [Label] -> Context -> Expression -> LabelLCode
 tr ls ctxt (Add e1 e2)   = (tr (split 0 ls) ctxt e1) <+> (tr (split 1 ls) ctxt e2) <+> (toCode [ADD])
