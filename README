@@ -23,10 +23,12 @@ GCC:
              where e1 has to be evaluated only once (as opposed to twice in (f e1 e1)), which increases performance.
 
 Ghc:
-
+  Ghc.Pipeline can be used to assemble ghc code.
 
 Game: 
    Sadly unfinished
 
 Strategies:
+         Ghosts: These have to be assembled with Ghc.
+         LambdaMen: These have to be compiled with ll2gcc (or a variant of it). We used Unix pipes and /dev/sdin to manually handle imports. 
  
