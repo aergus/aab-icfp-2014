@@ -2,7 +2,7 @@
 
 module GCC.Testscript where
 
-import GCC.Test
+import GCC.Base
 import GCC.Parser
 
 import System.Environment
@@ -14,3 +14,4 @@ testgcc = do args <- getArgs
                 (putStrLn.("ERROR: "++).show)
                 (\x -> (runDebug (resolveIdentifier x) []) >> (return ()))
                 (parseGcc code)
+ 
