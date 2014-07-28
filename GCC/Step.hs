@@ -18,7 +18,7 @@ import GCC.State
 
               
 step :: State -> Either String State
-step state = case getInstr state of
+step stateIn = let state = garbageCollect stateIn in case getInstr state of
  (LDC n)  -> Right . incCP . (pushData (TAG_INT (fromIntegral n)))   $ state
  (LD fr i)-> case ld fr i (envchain state) of
                 Just val    -> Right . incCP . (pushData val) $ state{envchain = insertRef val (envchain state)} 
@@ -98,7 +98,8 @@ step state = case getInstr state of
                _ -> case pop2 (ctrlstack state) of
                      Just (TAG_RET addr,TAG_FRAME k,rest) -> Right . (goto (fromIntegral addr)) $ 
                                                                         state{envchain = (incref (-1) (fromIntegral k)).
-                                                                              (setEnv (fromIntegral k)) $ (envchain state)}
+                                                                              (setEnv (fromIntegral k)) $ (envchain state),
+                                                                              ctrlstack=rest}
                      Just _                               -> Left "Tag mismatch"
                      Nothing                              -> Left "Stack empty"
  (SEL t f) -> case pop (datastack state) of

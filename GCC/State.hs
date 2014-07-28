@@ -42,5 +42,8 @@ pushData val (state@State{datastack=stack})= state{datastack = push val stack}
 pushCtrl :: ControlValue -> State -> State
 pushCtrl val (state@State{ctrlstack=stack})= state{ctrlstack = push val stack}
 
+
+garbageCollect :: State -> State
+garbageCollect (state@State{envchain=env}) = state{envchain=gc env}
  
 
