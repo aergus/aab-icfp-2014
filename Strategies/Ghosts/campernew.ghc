@@ -169,47 +169,26 @@ history_old:
         ; Decide the target
         ; TODO Refactor
 move:
+        mov c,2 ; f
         jeq panic, [cur_vitality], 1
-        jeq camp_target, [camp_status], 2
-normal:
-        int 3
-        int 5
-        mov [move_x], a
-        mov [move_y], b
-        mov c,move_x
-        mov d,move_y
-        int 1
-        mov pc,prepare_compare
+        ; no panic
+        mov c,0
+        mov [target_major], [lambdaman_major]
+        xor [target_major], c
+        mov [target_minor], [lambdaman_major]
+        xor [target_minor], c
+        mov pc, move_return
 camp_target:
-        int 3
-        int 5
-        mov [move_x], a
-        mov [move_y], b
-        mov c,move_x
-        mov d,move_y
-        mov a, [camp_x]
-        mov b, [camp_y]
-        mov pc,prepare_compare
-panic: 
-        ; swap the coordinates -> inverse the logic
-        int 1
-        mov [move_x], a
-        mov [move_y], b
-        mov c,move_x
-        mov d,move_y
-        int 3 
-        int 5
-prepare_compare:
-        mov [compare_rt], move_return
-        mov pc,comparecoordinates
+        mov [target_major], [camp_major]
+        mov [target_minor], [camp_minor]
 move_return:
         ; weight  
-        mov a,[compare_out_major]
+        mov a,[target_major]
         add a, weights
         mov [a],weights_major
         xor a,2
         mov [a],weights_major_rev
-        mov a,[compare_out_minor]
+        mov a,[target_minor]
         add a,weights
         mov [a],weights_minor
         xor a,2
