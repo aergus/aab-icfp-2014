@@ -1,0 +1,32 @@
+
+
+The project consists of several modules:
+  GCC (and submodules) contain code for emulating and generating Lambda-Man-Code
+  Ghc contains code for emulating and generating Ghost code
+  Game contains code for emulating the game
+  Strategies contains specific LambdaMan and Ghost code files.
+
+GCC:
+  GCC.Step emulates Lambda-Man-code. We didn't get to implement the several language extensions here.
+  GCC.Base contains functions to run the code, either step-by step with comments, or directly.
+  Here we already implemented part of a function 
+    Code -> (Worldstate -> Ghostcode -> (AIState, AIState->Worldstate->(AIState,Int))),
+  but since the Game module never got finished, we didn't remove the placeholders.
+  GCC.Testscript and GCC.Parser allow to test-run code from file. One of the files compiled with mk.sh
+  is testgcc, this allows to step-by-step test code from file.
+  The other files compiled by mk.sh allow to compile LambdaMan code from our LISP dialect. 
+  It is quite standard. The notable twists are 
+          * named toplevel expressions, allowing easy recursion
+          * inline recursive functions, syntax (\r f a1 ... an -> exp), where f is the name of the function, to be used in the body exp.
+          * "do-notation": { x1 <- e1; ...; xn <- en; exp} can be used to elegantly bind variables. Here xi can be used in all further
+             expressions, and in the body. This is very useful, because e.g. {x <- e1; (f x x)} is translated to ((\ x -> (f x x)) e1),
+             where e1 has to be evaluated only once (as opposed to twice in (f e1 e1)), which increases performance.
+
+Ghc:
+
+
+Game: 
+   Sadly unfinished
+
+Strategies:
+ 
