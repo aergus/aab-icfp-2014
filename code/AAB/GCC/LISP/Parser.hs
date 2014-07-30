@@ -46,7 +46,9 @@ twoarity  = [
 	("<=",Lte),
 	(">",Gt),
 	(">=",Gte),
-	("==",Eq)]
+	("==",Eq),
+	("&&", And),
+	("||", Or)]
 threearity  = [
 	("If",If)]
 
@@ -146,7 +148,7 @@ lispLanguage = LanguageDef { commentStart="",
 		caseSensitive=False,
 		identStart=oneOf "_" <|> letter,
 		identLetter=oneOf "_" <|> letter,
-		opStart=oneOf ":+-*/<=>\\[-",
+		opStart=oneOf ":+-*/<=>&|\\[-",
 		opLetter=oneOf "=r]>-",
 		reservedNames=map fst onearity ++ map fst threearity,
 		reservedOpNames=map fst twoarity ++ ["\\", "\\r", "[]", "->", "<-"]

@@ -61,6 +61,8 @@ data Expression = App Expression [Expression]
             | Gte Expression Expression
             | Eq  Expression Expression
             | If  Expression Expression Expression
+            | And Expression Expression
+            | Or  Expression Expression
             | Car Expression
             | Cdr Expression
             | Nil Expression
@@ -84,6 +86,8 @@ freeVariables (Gt e1 e2) = (freeVariables e1) `union` (freeVariables e2)
 freeVariables (Gte e1 e2) = (freeVariables e1) `union` (freeVariables e2)
 freeVariables (Eq e1 e2) = (freeVariables e1) `union` (freeVariables e2)
 freeVariables (If e1 e2 e3) = (freeVariables e1) `union` (freeVariables e2) `union` (freeVariables e3)
+freeVariables (And e1 e2) = (freeVariables e1) `union` (freeVariables e2)
+freeVariables (Or e1 e2) = (freeVariables e1) `union` (freeVariables e2)
 freeVariables (Car e) = freeVariables e
 freeVariables (Cdr e) = freeVariables e
 freeVariables (Nil e) = freeVariables e
@@ -111,6 +115,8 @@ prepare1 (Cons e1 e2)      = Cons (prepare1 e1) (prepare1 e2)
 prepare1 (Lam vars e)      = Lam vars (prepare1 e)
 prepare1 (List exps)       = List (map prepare1 exps)
 prepare1 (If e1 e2 e3)     = If (prepare1 e1) (prepare1 e2) (prepare1 e3)
+prepare1 (And e1 e2)       = And (prepare1 e1) (prepare1 e2)
+prepare1 (Or e1 e2)        = Or (prepare1 e1) (prepare1 e2)
 prepare1 (App e exps)      = App (prepare1 e) (map prepare1 exps)
 prepare1 (Do binds exp)    = let bindblocks = sepDo [(s,prepare1 e)|(s,e)<-binds] in
                               foldr (\binds1 exp1 -> App (Lam (map fst binds1) exp1) (map snd binds1)) (prepare1 exp) bindblocks
@@ -148,6 +154,8 @@ prepare2 (Lam vars e)      = Lam vars (prepare2 e)
 prepare2 (LamF f vars e)   = LamF f vars (prepare2 e)
 prepare2 (List exps)       = List (map prepare2 exps)
 prepare2 (If e1 e2 e3)     = If (prepare2 e1) (prepare2 e2) (prepare2 e3)
+prepare2 (Or e1 e2)        = Or (prepare2 e1) (prepare2 e2)
+prepare2 (And e1 e2)       = And (prepare2 e1) (prepare2 e2)
 prepare2 (App e exps)      = App (prepare2 e) (map prepare2 exps)
 prepare2 x                 = x
 
@@ -170,6 +178,8 @@ prepare3 freenames (Cons e1 e2)      = Cons (prepare3 (split 0 freenames) e1) (p
 prepare3 freenames (Lam vars e)      = Lam vars (prepare3 (freenames \\ vars) e)
 prepare3 freenames (List exps)       = List (zipWith (\i e -> prepare3 (split i freenames) e) [0..] exps)
 prepare3 freenames (If e1 e2 e3)     = If (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2) (prepare3 (split 2 freenames) e3)
+prepare3 freenames (And e1 e2)       = And (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2)
+prepare3 freenames (Or e1 e2)        = Or (prepare3 (split 0 freenames) e1) (prepare3 (split 1 freenames) e2)
 prepare3 freenames (App e exps)      = App (prepare3 (split 0 freenames) e) (zipWith (\i e -> prepare3 (split i freenames) e) [1..] exps)
 prepare3 _ x                 = x
 
@@ -248,6 +258,14 @@ tr (lt:lf:ls) ctxt (If e et ef) = (tr (split 0 ls) ctxt e)
                              <+> (toCode [SEL lt lf])
                              <+> (floatAt lt ((tr (split 1 ls) ctxt et) <+> (toCode [JOIN])))
                              <+> (floatAt lf ((tr (split 2 ls) ctxt ef) <+> (toCode [JOIN])))
+tr (l1:l2:ls) ctxt (And e1 e2) = (tr (split 0 ls) ctxt e1)
+                            <+> (toCode [SEL l1 l2])
+                            <+> (floatAt l1 ((tr (split 1 ls) ctxt e2) <+> (toCode [JOIN])))
+                            <+> (floatAt l2 (toCode [LDC 0,JOIN]))
+tr (l1:l2:ls) ctxt (Or e1 e2) = (tr (split 0 ls) ctxt e1)
+                           <+> (toCode [SEL l1 l2])
+                           <+> (floatAt l1 (toCode [LDC 1,JOIN]))
+                           <+> (floatAt l2 ((tr (split 1 ls) ctxt e2) <+> (toCode [JOIN])))
 tr (l:ls) (ctxtm,lvl) (Lam vars exp) = let newcontext = ((M.fromList [(var, (lvl+1,i,[]))|  (var,i) <- zip vars [0..]]) `M.union` ctxtm,lvl+1) in
                                           (toCode [LDF l]) 
                                       <+> (floatAt l ( (tr ls newcontext exp)<+>(toCode [RTN])))
